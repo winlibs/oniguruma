@@ -1,28 +1,19 @@
 cmake_minimum_required(VERSION 3.1)
-project(oniguruma VERSION 6.9.1)
+project(oniguruma
+  VERSION 6.9.3
+  LANGUAGES C)
 
 set(PACKAGE onig)
 set(PACKAGE_VERSION ${PROJECT_VERSION})
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(ENABLE_POSIX_API  "Include POSIX API" ON)
+if(MSVC)
+  option(MSVC_STATIC_RUNTIME "Build with static runtime" OFF)
+endif()
 
 set(USE_CRNL_AS_LINE_TERMINATOR 0)
 set(VERSION ${PACKAGE_VERSION})
-
-if(MSVC)
-  # Force to always compile with W4
-  if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
-    string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
-  endif()
-elseif(CMAKE_COMPILER_IS_GNUCXX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-elseif(CMAKE_COMPILER_IS_GNUCC)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-endif()
-
 
 include(CheckCSourceCompiles)
 include(CheckIncludeFiles)
@@ -41,7 +32,6 @@ check_include_files(unistd.h    HAVE_UNISTD_H)
 check_include_files(inttypes.h  HAVE_INTTYPES_H)
 check_type_size(int SIZEOF_INT)
 check_type_size(long SIZEOF_LONG)
-check_type_size(short SIZEOF_SHORT)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
@@ -73,6 +63,26 @@ add_library(onig ${_SRCS})
 target_include_directories(onig PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+
+if(MSVC)
+  target_compile_options(onig PRIVATE
+	#/W4
+	)
+  if(MSVC_STATIC_RUNTIME)
+	target_compile_options(onig PRIVATE
+	  $<$<CONFIG:Release>:/MT>
+	  $<$<CONFIG:Debug>:/MTd>
+	  $<$<CONFIG:MinSizeRel>:/MT>
+	  $<$<CONFIG:RelWithDebgInfo>:/MTd>
+	  )
+	target_compile_definitions(onig PUBLIC -DONIG_STATIC)
+  endif()
+elseif(CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(onig PRIVATE
+	-Wall
+	)
+endif()
+
 
 # Installation (https://github.com/forexample/package-example)
 

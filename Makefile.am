@@ -11,7 +11,7 @@ EXTRA_DIST = oniguruma.pc.in HISTORY README_japanese README.md \
 	doc/API doc/API.ja doc/RE doc/RE.ja doc/FAQ doc/FAQ.ja \
 	doc/CALLOUTS.BUILTIN doc/CALLOUTS.BUILTIN.ja \
 	doc/CALLOUTS.API doc/CALLOUTS.API.ja \
-	doc/UNICODE_PROPERTIES \
+	doc/SYNTAX.md doc/UNICODE_PROPERTIES \
 	src/Makefile.windows src/config.h.windows.in \
 	src/config.h.win32 src/config.h.win64 \
 	windows/testc.c contributed/libfuzzer-onig.cpp contributed/makefile
@@ -38,3 +38,28 @@ pkgconfig_DATA = oniguruma.pc
 
 all-test:
 	cd test; make test
+
+sanitize:
+	make clean
+	./configure CC=clang CFLAGS="-O -g -fsanitize=address"
+	make
+	make all-test
+
+cov:
+	make lcov-clear
+	cd test; make CFLAGS="--coverage" test
+	make lcov
+
+gcov:
+	make CFLAGS="--coverage"
+
+lcov:
+	lcov -c -d src/.libs -o coverage.info
+	genhtml -o coverage coverage.info
+
+lcov-clear:
+	lcov -z -d .
+
+cov-clean: clean
+	rm -rf coverage coverage.info
+	find . -name '*.gcno' | xargs rm -f

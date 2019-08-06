@@ -5,8 +5,7 @@
 #include <string.h>
 #include "oniguruma.h"
 
-extern int exec(OnigSyntaxType* syntax,
-		char* apattern, char* astr)
+extern int exec(OnigSyntaxType* syntax, char* apattern, char* astr)
 {
   int r;
   unsigned char *start, *range, *end;
@@ -17,7 +16,7 @@ extern int exec(OnigSyntaxType* syntax,
   UChar* str     = (UChar* )astr;
 
   r = onig_new(&reg, pattern, pattern + strlen((char* )pattern),
-	       ONIG_OPTION_DEFAULT, ONIG_ENCODING_ASCII, syntax, &einfo);
+               ONIG_OPTION_DEFAULT, ONIG_ENCODING_ASCII, syntax, &einfo);
   if (r != ONIG_NORMAL) {
     char s[ONIG_MAX_ERROR_MESSAGE_LEN];
     onig_error_code_to_str((UChar* )s, r, &einfo);
@@ -46,6 +45,8 @@ extern int exec(OnigSyntaxType* syntax,
     char s[ONIG_MAX_ERROR_MESSAGE_LEN];
     onig_error_code_to_str((UChar* )s, r);
     fprintf(stderr, "ERROR: %s\n", s);
+    onig_region_free(region, 1 /* 1:free self, 0:free contents only */);
+    onig_free(reg);
     return -1;
   }
 
@@ -62,11 +63,10 @@ extern int main(int argc, char* argv[])
   onig_initialize(use_encs, sizeof(use_encs)/sizeof(use_encs[0]));
 
   r = exec(ONIG_SYNTAX_PERL,
-	   "\\p{XDigit}\\P{XDigit}\\p{^XDigit}\\P{^XDigit}\\p{XDigit}",
-	   "bgh3a");
+           "\\p{XDigit}\\P{XDigit}\\p{^XDigit}\\P{^XDigit}\\p{XDigit}",
+           "bgh3a");
 
-  r = exec(ONIG_SYNTAX_JAVA,
-	   "\\p{XDigit}\\P{XDigit}[a-c&&b-g]", "bgc");
+  r = exec(ONIG_SYNTAX_JAVA, "\\p{XDigit}\\P{XDigit}[a-c&&b-g]", "bgc");
 
   r = exec(ONIG_SYNTAX_ASIS,
            "abc def* e+ g?ddd[a-rvvv] (vv){3,7}hv\\dvv(?:aczui ss)\\W\\w$",
