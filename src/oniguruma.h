@@ -4,7 +4,7 @@
   oniguruma.h - Oniguruma (regular expression library)
 **********************************************************************/
 /*-
- * Copyright (c) 2002-2019  K.Kosako
+ * Copyright (c) 2002-2020  K.Kosako
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,9 +36,9 @@ extern "C" {
 #define ONIGURUMA
 #define ONIGURUMA_VERSION_MAJOR   6
 #define ONIGURUMA_VERSION_MINOR   9
-#define ONIGURUMA_VERSION_TEENY   4
+#define ONIGURUMA_VERSION_TEENY   5
 
-#define ONIGURUMA_VERSION_INT     60904
+#define ONIGURUMA_VERSION_INT     60905
 
 #ifndef P_
 #if defined(__STDC__) || defined(_WIN32)
@@ -68,6 +68,10 @@ extern "C" {
 #endif
 #else
 #define ONIG_EXTERN   extern
+#endif
+
+#ifndef ONIG_VARIADIC_FUNC_ATTR
+#define ONIG_VARIADIC_FUNC_ATTR
 #endif
 
 /* PART: character encoding */
@@ -515,6 +519,8 @@ ONIG_EXTERN OnigSyntaxType*   OnigDefaultSyntax;
 #define ONIG_SYN_CAPTURE_ONLY_NAMED_GROUP        (1U<<7)  /* see doc/RE */
 #define ONIG_SYN_ALLOW_MULTIPLEX_DEFINITION_NAME (1U<<8)  /* (?<x>)(?<x>) */
 #define ONIG_SYN_FIXED_INTERVAL_IS_GREEDY_ONLY   (1U<<9)  /* a{n}?=(?:a{n})? */
+#define ONIG_SYN_ISOLATED_OPTION_CONTINUE_BRANCH (1U<<10) /* ..(?i)...|... */
+#define ONIG_SYN_VARIABLE_LEN_LOOK_BEHIND        (1U<<11)  /* (?<=a+|..) */
 
 /* syntax (behavior) in char class [...] */
 #define ONIG_SYN_NOT_NEWLINE_IN_NEGATIVE_CC      (1U<<20) /* [^...] */
@@ -554,6 +560,7 @@ ONIG_EXTERN OnigSyntaxType*   OnigDefaultSyntax;
 #define ONIGERR_MATCH_STACK_LIMIT_OVER                        -15
 #define ONIGERR_PARSE_DEPTH_LIMIT_OVER                        -16
 #define ONIGERR_RETRY_LIMIT_IN_MATCH_OVER                     -17
+#define ONIGERR_RETRY_LIMIT_IN_SEARCH_OVER                    -18
 #define ONIGERR_DEFAULT_ENCODING_IS_NOT_SETTED                -21
 #define ONIGERR_SPECIFIED_ENCODING_CANT_CONVERT_TO_WIDE_CHAR  -22
 #define ONIGERR_FAIL_TO_INITIALIZE                            -23
@@ -777,7 +784,7 @@ int onig_initialize P_((OnigEncoding encodings[], int number_of_encodings));
 ONIG_EXTERN
 int onig_init P_((void));
 ONIG_EXTERN
-int onig_error_code_to_str PV_((OnigUChar* s, int err_code, ...));
+int ONIG_VARIADIC_FUNC_ATTR onig_error_code_to_str PV_((OnigUChar* s, int err_code, ...));
 ONIG_EXTERN
 int onig_is_error_code_needs_param PV_((int code));
 ONIG_EXTERN
@@ -902,11 +909,19 @@ unsigned long onig_get_retry_limit_in_match P_((void));
 ONIG_EXTERN
 int onig_set_retry_limit_in_match P_((unsigned long n));
 ONIG_EXTERN
+unsigned long onig_get_retry_limit_in_search P_((void));
+ONIG_EXTERN
+int onig_set_retry_limit_in_search P_((unsigned long n));
+ONIG_EXTERN
 unsigned int onig_get_parse_depth_limit P_((void));
 ONIG_EXTERN
 int onig_set_capture_num_limit P_((int num));
 ONIG_EXTERN
 int onig_set_parse_depth_limit P_((unsigned int depth));
+ONIG_EXTERN
+int onig_get_subexp_call_max_nest_level P_((void));
+ONIG_EXTERN
+int onig_set_subexp_call_max_nest_level P_((int level));
 ONIG_EXTERN
 int onig_unicode_define_user_property P_((const char* name, OnigCodePoint* ranges));
 ONIG_EXTERN
@@ -929,6 +944,8 @@ ONIG_EXTERN
 int onig_set_match_stack_limit_size_of_match_param P_((OnigMatchParam* param, unsigned int limit));
 ONIG_EXTERN
 int onig_set_retry_limit_in_match_of_match_param P_((OnigMatchParam* param, unsigned long limit));
+ONIG_EXTERN
+int onig_set_retry_limit_in_search_of_match_param P_((OnigMatchParam* param, unsigned long limit));
 ONIG_EXTERN
 int onig_set_progress_callout_of_match_param P_((OnigMatchParam* param, OnigCalloutFunc f));
 ONIG_EXTERN

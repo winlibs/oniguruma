@@ -1,6 +1,6 @@
 /*
- * test_utf8.c
- * Copyright (c) 2019-2020  K.Kosako
+ * test_back.c
+ * Copyright (c) 2020  K.Kosako
  */
 #include "config.h"
 #ifdef ONIG_ESCAPE_UCHAR_COLLISION
@@ -23,7 +23,7 @@ static FILE* err_file;
 static OnigRegion* region;
 
 static void xx(char* pattern, char* str, int from, int to, int mem, int not,
-               int error_no)
+               int error_no, int line_no)
 {
   int r;
   regex_t* reg;
@@ -36,17 +36,17 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
 
     if (error_no == 0) {
       onig_error_code_to_str((UChar* )s, r, &einfo);
-      fprintf(err_file, "ERROR: %s  /%s/\n", s, pattern);
+      fprintf(err_file, "ERROR: %s  /%s/ #%d\n", s, pattern, line_no);
       nerror++;
     }
     else {
       if (r == error_no) {
-        fprintf(stdout, "OK(ERROR): /%s/ %d\n", pattern, r);
+        fprintf(stdout, "OK(ERROR): /%s/ %d  #%d\n", pattern, r, line_no);
         nsucc++;
       }
       else {
-        fprintf(stdout, "FAIL(ERROR): /%s/ '%s', %d, %d\n", pattern, str,
-                error_no, r);
+        fprintf(stdout, "FAIL(ERROR): /%s/ '%s', %d, %d  #%d\n", pattern, str,
+                error_no, r, line_no);
         nfail++;
       }
     }
@@ -55,24 +55,24 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
   }
 
   r = onig_search(reg, (UChar* )str, (UChar* )(str + SLEN(str)),
-                  (UChar* )str, (UChar* )(str + SLEN(str)),
+                  (UChar* )(str + SLEN(str)), (UChar* )str,
                   region, ONIG_OPTION_NONE);
   if (r < ONIG_MISMATCH) {
     char s[ONIG_MAX_ERROR_MESSAGE_LEN];
 
     if (error_no == 0) {
       onig_error_code_to_str((UChar* )s, r);
-      fprintf(err_file, "ERROR: %s  /%s/\n", s, pattern);
+      fprintf(err_file, "ERROR: %s  /%s/  #%d\n", s, pattern, line_no);
       nerror++;
     }
     else {
       if (r == error_no) {
-        fprintf(stdout, "OK(ERROR): /%s/ '%s', %d\n", pattern, str, r);
+        fprintf(stdout, "OK(ERROR): /%s/ '%s', %d  #%d\n", pattern, str, r, line_no);
         nsucc++;
       }
       else {
-        fprintf(stdout, "FAIL ERROR NO: /%s/ '%s', %d, %d\n", pattern, str,
-                error_no, r);
+        fprintf(stdout, "FAIL ERROR NO: /%s/ '%s', %d, %d  #%d\n", pattern,
+		str, error_no, r, line_no);
         nfail++;
       }
     }
@@ -82,27 +82,27 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
 
   if (r == ONIG_MISMATCH) {
     if (not) {
-      fprintf(stdout, "OK(N): /%s/ '%s'\n", pattern, str);
+      fprintf(stdout, "OK(N): /%s/ '%s'  #%d\n", pattern, str, line_no);
       nsucc++;
     }
     else {
-      fprintf(stdout, "FAIL: /%s/ '%s'\n", pattern, str);
+      fprintf(stdout, "FAIL: /%s/ '%s'  #%d\n", pattern, str, line_no);
       nfail++;
     }
   }
   else {
     if (not) {
-      fprintf(stdout, "FAIL(N): /%s/ '%s'\n", pattern, str);
+      fprintf(stdout, "FAIL(N): /%s/ '%s'  #%d\n", pattern, str, line_no);
       nfail++;
     }
     else {
       if (region->beg[mem] == from && region->end[mem] == to) {
-        fprintf(stdout, "OK: /%s/ '%s'\n", pattern, str);
+        fprintf(stdout, "OK: /%s/ '%s'  #%d\n", pattern, str, line_no);
         nsucc++;
       }
       else {
-        fprintf(stdout, "FAIL: /%s/ '%s' %d-%d : %d-%d\n", pattern, str,
-                from, to, region->beg[mem], region->end[mem]);
+        fprintf(stdout, "FAIL: /%s/ '%s' %d-%d : %d-%d  #%d\n", pattern, str,
+                from, to, region->beg[mem], region->end[mem], line_no);
         nfail++;
       }
     }
@@ -110,25 +110,30 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
   onig_free(reg);
 }
 
-static void x2(char* pattern, char* str, int from, int to)
+static void xx2(char* pattern, char* str, int from, int to, int line_no)
 {
-  xx(pattern, str, from, to, 0, 0, 0);
+  xx(pattern, str, from, to, 0, 0, 0, line_no);
 }
 
-static void x3(char* pattern, char* str, int from, int to, int mem)
+static void xx3(char* pattern, char* str, int from, int to, int mem, int line_no)
 {
-  xx(pattern, str, from, to, mem, 0, 0);
+  xx(pattern, str, from, to, mem, 0, 0, line_no);
 }
 
-static void n(char* pattern, char* str)
+static void xn(char* pattern, char* str, int line_no)
 {
-  xx(pattern, str, 0, 0, 0, 1, 0);
+  xx(pattern, str, 0, 0, 0, 1, 0, line_no);
 }
 
-static void e(char* pattern, char* str, int error_no)
+static void xe(char* pattern, char* str, int error_no, int line_no)
 {
-  xx(pattern, str, 0, 0, 0, 0, error_no);
+  xx(pattern, str, 0, 0, 0, 0, error_no, line_no);
 }
+
+#define x2(p,s,f,t)    xx2(p,s,f,t, __LINE__)
+#define x3(p,s,f,t,m)  xx3(p,s,f,t,m, __LINE__)
+#define n(p,s)          xn(p,s,   __LINE__)
+#define e(p,s,e)        xe(p,s,e, __LINE__)
 
 extern int main(int argc, char* argv[])
 {
@@ -155,7 +160,7 @@ extern int main(int argc, char* argv[])
   x2("\\C-b", "\002", 0, 1);
   x2("\\c\\\\", "\034", 0, 1);
   x2("q[\\c\\\\]", "q\034", 0, 2);
-  x2("", "a", 0, 0);
+  x2("", "a", 1, 1);
   x2("a", "a", 0, 1);
   x2("\\x61", "a", 0, 1);
   x2("aa", "aa", 0, 2);
@@ -178,10 +183,10 @@ extern int main(int argc, char* argv[])
   x2("\\S", "b", 0, 1);
   x2("\\d", "4", 0, 1);
   n("\\D", "4");
-  x2("\\b", "z ", 0, 0);
-  x2("\\b", " z", 1, 1);
-  x2("\\b", "  z ", 2, 2);
-  x2("\\B", "zz ", 1, 1);
+  x2("\\b", "z ", 1, 1);
+  x2("\\b", " z", 2, 2);
+  x2("\\b", "  z ", 3, 3);
+  x2("\\B", "zz ", 3, 3);
   x2("\\B", "z ", 2, 2);
   x2("\\B", " z", 0, 0);
   x2("[ab]", "b", 0, 1);
@@ -191,7 +196,7 @@ extern int main(int argc, char* argv[])
   x2("[^a]", "\n", 0, 1);
   x2("[]]", "]", 0, 1);
   n("[^]]", "]");
-  x2("[\\^]+", "0^^1", 1, 3);
+  x2("[\\^]+", "0^^1", 2, 3);
   x2("[b-]", "b", 0, 1);
   x2("[b-]", "-", 0, 1);
   x2("[\\w]", "z", 0, 1);
@@ -209,7 +214,7 @@ extern int main(int argc, char* argv[])
   n("[\\w\\d]", " ");
   x2("[[:upper:]]", "B", 0, 1);
   x2("[*[:xdigit:]+]", "+", 0, 1);
-  x2("[*[:xdigit:]+]", "GHIKK-9+*", 6, 7);
+  x2("[*[:xdigit:]+]", "GHIKK-9+*", 8, 9);
   x2("[*[:xdigit:]+]", "-@^+", 3, 4);
   n("[[:upper]]", "A");
   x2("[[:upper]]", ":", 0, 1);
@@ -260,9 +265,9 @@ extern int main(int argc, char* argv[])
   x2("xyz\\Z", "xyz", 0, 3);
   x2("xyz\\z", "xyz", 0, 3);
   x2("a\\Z", "a", 0, 1);
-  x2("\\Gaz", "az", 0, 2);
+  n("\\Gaz", "az");
   n("\\Gz", "bza");
-  n("az\\G", "az");
+  x2("az\\G", "az", 0, 2);
   n("az\\A", "az");
   n("a\\Az", "az");
   x2("\\^\\$", "^$", 0, 2);
@@ -323,38 +328,38 @@ extern int main(int argc, char* argv[])
   x2("(?m:.)", "\n", 0, 1);
   x2("(?m:a.)", "a\n", 0, 2);
   x2("(?m:.b)", "a\nb", 1, 3);
-  x2(".*abc", "dddabdd\nddabc", 8, 13);
-  x2(".+abc", "dddabdd\nddabcaa\naaaabc", 8, 13);
-  x2("(?m:.*abc)", "dddabddabc", 0, 10);
+  x2(".*abc", "dddabdd\nddabc", 10, 13);
+  x2(".+abc", "dddabdd\nddabcaa\naaaabc", 18, 22);
+  x2("(?m:.*abc)", "dddabddabc", 7, 10);
   n("(?i)(?-i)a", "A");
   n("(?i)(?-i:a)", "A");
   x2("a?", "", 0, 0);
-  x2("a?", "b", 0, 0);
-  x2("a?", "a", 0, 1);
+  x2("a?", "b", 1, 1);
+  x2("a?", "a", 1, 1);
   x2("a*", "", 0, 0);
-  x2("a*", "a", 0, 1);
-  x2("a*", "aaa", 0, 3);
-  x2("a*", "baaaa", 0, 0);
+  x2("a*", "a", 1, 1);
+  x2("a*", "aaa", 3, 3);
+  x2("a*", "baaaa", 5, 5);
   n("a+", "");
   x2("a+", "a", 0, 1);
-  x2("a+", "aaaa", 0, 4);
-  x2("a+", "aabbb", 0, 2);
-  x2("a+", "baaaa", 1, 5);
+  x2("a+", "aaaa", 3, 4);
+  x2("a+", "aabbb", 1, 2);
+  x2("a+", "baaaa", 4, 5);
   x2(".?", "", 0, 0);
-  x2(".?", "f", 0, 1);
-  x2(".?", "\n", 0, 0);
+  x2(".?", "f", 1, 1);
+  x2(".?", "\n", 1, 1);
   x2(".*", "", 0, 0);
-  x2(".*", "abcde", 0, 5);
+  x2(".*", "abcde", 5, 5);
   x2(".+", "z", 0, 1);
-  x2(".+", "zdswer\n", 0, 6);
+  x2(".+", "zdswer\n", 5, 6);
   x2("(.*)a\\1f", "babfbac", 0, 4);
   x2("(.*)a\\1f", "bacbabf", 3, 7);
   x2("((.*)a\\2f)", "bacbabf", 3, 7);
   x2("(.*)a\\1f", "baczzzzzz\nbazz\nzzzzbabf", 19, 23);
   x2("a|b", "a", 0, 1);
   x2("a|b", "b", 0, 1);
-  x2("|a", "a", 0, 0);
-  x2("(|a)", "a", 0, 0);
+  x2("|a", "a", 1, 1);
+  x2("(|a)", "a", 1, 1);
   x2("ab|bc", "ab", 0, 2);
   x2("ab|bc", "bc", 0, 2);
   x2("z(?:ab|bc)", "zbc", 0, 3);
@@ -364,11 +369,11 @@ extern int main(int argc, char* argv[])
   x2("a|b|cd|efg|h|ijk|lmn|o|pq|rstuvwx|yz", "pqr", 0, 2);
   n("a|b|cd|efg|h|ijk|lmn|o|pq|rstuvwx|yz", "mn");
   x2("a|^z", "ba", 1, 2);
-  x2("a|^z", "za", 0, 1);
+  x2("a|^z", "za", 1, 2);
   x2("a|\\Gz", "bza", 2, 3);
-  x2("a|\\Gz", "za", 0, 1);
+  x2("a|\\Gz", "za", 1, 2);
   x2("a|\\Az", "bza", 2, 3);
-  x2("a|\\Az", "za", 0, 1);
+  x2("a|\\Az", "za", 1, 2);
   x2("a|b\\Z", "ba", 1, 2);
   x2("a|b\\Z", "b", 0, 1);
   x2("a|b\\z", "ba", 1, 2);
@@ -385,31 +390,31 @@ extern int main(int argc, char* argv[])
   x2("(?=za)..a|(?=zz)..a", "zza", 0, 3);
   n("(?>a|abd)c", "abdc");
   x2("(?>abd|a)c", "abdc", 0, 4);
-  x2("a?|b", "a", 0, 1);
-  x2("a?|b", "b", 0, 0);
+  x2("a?|b", "a", 1, 1);
+  x2("a?|b", "b", 1, 1);
   x2("a?|b", "", 0, 0);
-  x2("a*|b", "aa", 0, 2);
-  x2("a*|b*", "ba", 0, 0);
-  x2("a*|b*", "ab", 0, 1);
+  x2("a*|b", "aa", 2, 2);
+  x2("a*|b*", "ba", 2, 2);
+  x2("a*|b*", "ab", 2, 2);
   x2("a+|b*", "", 0, 0);
-  x2("a+|b*", "bbb", 0, 3);
-  x2("a+|b*", "abbb", 0, 1);
+  x2("a+|b*", "bbb", 3, 3);
+  x2("a+|b*", "abbb", 4, 4);
   n("a+|b+", "");
-  x2("(a|b)?", "b", 0, 1);
-  x2("(a|b)*", "ba", 0, 2);
-  x2("(a|b)+", "bab", 0, 3);
-  x2("(ab|ca)+", "caabbc", 0, 4);
-  x2("(ab|ca)+", "aabca", 1, 5);
-  x2("(ab|ca)+", "abzca", 0, 2);
-  x2("(a|bab)+", "ababa", 0, 5);
+  x2("(a|b)?", "b", 1, 1);
+  x2("(a|b)*", "ba", 2, 2);
+  x2("(a|b)+", "bab", 2, 3);
+  x2("(ab|ca)+", "caabbc", 2, 4);
+  x2("(ab|ca)+", "aabca", 3, 5);
+  x2("(ab|ca)+", "abzca", 3, 5);
+  x2("(a|bab)+", "ababa", 4, 5);
   x2("(a|bab)+", "ba", 1, 2);
-  x2("(a|bab)+", "baaaba", 1, 4);
+  x2("(a|bab)+", "baaaba", 5, 6);
   x2("(?:a|b)(?:a|b)", "ab", 0, 2);
-  x2("(?:a*|b*)(?:a*|b*)", "aaabbb", 0, 3);
-  x2("(?:a*|b*)(?:a+|b+)", "aaabbb", 0, 6);
-  x2("(?:a+|b+){2}", "aaabbb", 0, 6);
-  x2("h{0,}", "hhhh", 0, 4);
-  x2("(?:a+|b+){1,2}", "aaabbb", 0, 6);
+  x2("(?:a*|b*)(?:a*|b*)", "aaabbb", 6, 6);
+  x2("(?:a*|b*)(?:a+|b+)", "aaabbb", 5, 6);
+  x2("(?:a+|b+){2}", "aaabbb", 4, 6);
+  x2("h{0,}", "hhhh", 4, 4);
+  x2("(?:a+|b+){1,2}", "aaabbb", 5, 6);
   n("ax{2}*a", "0axxxa1");
   n("a.{0,2}a", "0aXXXa0");
   n("a.{0,2}?a", "0aXXXa0");
@@ -418,8 +423,8 @@ extern int main(int argc, char* argv[])
   x2("^[a-z]{2,}?$", "aaa", 0, 3);
   x2("(?:a+|\\Ab*)cc", "cc", 0, 2);
   n("(?:a+|\\Ab*)cc", "abcc");
-  x2("(?:^a+|b+)*c", "aabbbabc", 6, 8);
-  x2("(?:^a+|b+)*c", "aabbbbc", 0, 7);
+  x2("(?:^a+|b+)*c", "aabbbabc", 7, 8);
+  x2("(?:^a+|b+)*c", "aabbbbc", 6, 7);
   x2("a|(?i)c", "C", 0, 1);
   x2("(?i)c|a", "C", 0, 1);
   x2("(?i)c|a", "A", 0, 1);
@@ -429,37 +434,37 @@ extern int main(int argc, char* argv[])
   n("a(?:(?i)b)|c", "aC");
   x2("(?i:c)|a", "C", 0, 1);
   n("(?i:c)|a", "A");
-  x2("[abc]?", "abc", 0, 1);
-  x2("[abc]*", "abc", 0, 3);
-  x2("[^abc]*", "abc", 0, 0);
+  x2("[abc]?", "abc", 3, 3);
+  x2("[abc]*", "abc", 3, 3);
+  x2("[^abc]*", "abc", 3, 3);
   n("[^abc]+", "abc");
-  x2("a?\?", "aaa", 0, 0);
+  x2("a?\?", "aaa", 3, 3);
   x2("ba?\?b", "bab", 0, 3);
-  x2("a*?", "aaa", 0, 0);
+  x2("a*?", "aaa", 3, 3);
   x2("ba*?", "baa", 0, 1);
   x2("ba*?b", "baab", 0, 4);
-  x2("a+?", "aaa", 0, 1);
+  x2("a+?", "aaa", 2, 3);
   x2("ba+?", "baa", 0, 2);
   x2("ba+?b", "baab", 0, 4);
-  x2("(?:a?)?\?", "a", 0, 0);
-  x2("(?:a?\?)?", "a", 0, 0);
-  x2("(?:a?)+?", "aaa", 0, 1);
-  x2("(?:a+)?\?", "aaa", 0, 0);
-  x2("(?:a+)?\?b", "aaab", 0, 4);
+  x2("(?:a?)?\?", "a", 1, 1);
+  x2("(?:a?\?)?", "a", 1, 1);
+  x2("(?:a?)+?", "aaa", 3, 3);
+  x2("(?:a+)?\?", "aaa", 3, 3);
+  x2("(?:a+)?\?b", "aaab", 3, 4);
   x2("(?:ab)?{2}", "", 0, 0);
-  x2("(?:ab)?{2}", "ababa", 0, 4);
-  x2("(?:ab)*{0}", "ababa", 0, 0);
-  x2("(?:ab){3,}", "abababab", 0, 8);
+  x2("(?:ab)?{2}", "ababa", 5, 5);
+  x2("(?:ab)*{0}", "ababa", 5, 5);
+  x2("(?:ab){3,}", "abababab", 2, 8);
   n("(?:ab){3,}", "abab");
-  x2("(?:ab){2,4}", "ababab", 0, 6);
-  x2("(?:ab){2,4}", "ababababab", 0, 8);
-  x2("(?:ab){2,4}?", "ababababab", 0, 4);
+  x2("(?:ab){2,4}", "ababab", 2, 6);
+  x2("(?:ab){2,4}", "ababababab", 6, 10);
+  x2("(?:ab){2,4}?", "ababababab", 6, 10);
   x2("(?:ab){,}", "ab{,}", 0, 5);
-  x2("(?:abc)+?{2}", "abcabcabc", 0, 6);
-  x2("(?:X*)(?i:xa)", "XXXa", 0, 4);
-  x2("(d+)([^abc]z)", "dddz", 0, 4);
-  x2("([^abc]*)([^abc]z)", "dddz", 0, 4);
-  x2("(\\w+)(\\wz)", "dddz", 0, 4);
+  x2("(?:abc)+?{2}", "abcabcabc", 3, 9);
+  x2("(?:X*)(?i:xa)", "XXXa", 2, 4);
+  x2("(d+)([^abc]z)", "dddz", 1, 4);
+  x2("([^abc]*)([^abc]z)", "dddz", 2, 4);
+  x2("(\\w+)(\\wz)", "dddz", 1, 4);
   x3("(a)", "a", 0, 1, 1);
   x3("(ab)", "ab", 0, 2, 1);
   x2("((ab))", "ab", 0, 2);
@@ -473,14 +478,14 @@ extern int main(int argc, char* argv[])
   x2("(^a)", "a", 0, 1);
   x3("(a)|(a)", "ba", 1, 2, 1);
   x3("(^a)|(a)", "ba", 1, 2, 2);
-  x3("(a?)", "aaa", 0, 1, 1);
-  x3("(a*)", "aaa", 0, 3, 1);
+  x3("(a?)", "aaa", 3, 3, 1);
+  x3("(a*)", "aaa", 3, 3, 1);
   x3("(a*)", "", 0, 0, 1);
-  x3("(a+)", "aaaaaaa", 0, 7, 1);
-  x3("(a+|b*)", "bbbaa", 0, 3, 1);
-  x3("(a+|b?)", "bbbaa", 0, 1, 1);
-  x3("(abc)?", "abc", 0, 3, 1);
-  x3("(abc)*", "abc", 0, 3, 1);
+  x3("(a+)", "aaaaaaa", 6, 7, 1);
+  x3("(a+|b*)", "bbbaa", 5, 5, 1);
+  x3("(a+|b?)", "bbbaa", 5, 5, 1);
+  x3("(abc)?", "abc", -1, -1, 1);
+  x3("(abc)*", "abc", -1, -1, 1);
   x3("(abc)+", "abc", 0, 3, 1);
   x3("(xyz|abc)+", "abc", 0, 3, 1);
   x3("([xyz][abc]|abc)+", "abc", 0, 3, 1);
@@ -492,7 +497,7 @@ extern int main(int argc, char* argv[])
   x2("(?:abc)|(ABC)", "abc", 0, 3);
   x3("(?i:(abc))|(zzz)", "ABC", 0, 3, 1);
   x3("a*(.)", "aaaaz", 4, 5, 1);
-  x3("a*?(.)", "aaaaz", 0, 1, 1);
+  x3("a*?(.)", "aaaaz", 4, 5, 1);
   x3("a*?(c)", "aaaac", 4, 5, 1);
   x3("[bcd]a*(.)", "caaaaz", 5, 6, 1);
   x3("(\\Abb)cc", "bbcc", 0, 2, 1);
@@ -510,16 +515,16 @@ extern int main(int argc, char* argv[])
   n("(a)$|\\1", "az");
   x2("(a)\\1", "aa", 0, 2);
   n("(a)\\1", "ab");
-  x2("(a?)\\1", "aa", 0, 2);
-  x2("(a?\?)\\1", "aa", 0, 0);
-  x2("(a*)\\1", "aaaaa", 0, 4);
-  x3("(a*)\\1", "aaaaa", 0, 2, 1);
+  x2("(a?)\\1", "aa", 2, 2);
+  x2("(a?\?)\\1", "aa", 2, 2);
+  x2("(a*)\\1", "aaaaa", 5, 5);
+  x3("(a*)\\1", "aaaaa", 5, 5, 1);
   x2("a(b*)\\1", "abbbb", 0, 5);
   x2("a(b*)\\1", "ab", 0, 1);
-  x2("(a*)(b*)\\1\\2", "aaabbaaabb", 0, 10);
-  x2("(a*)(b*)\\2", "aaabbbb", 0, 7);
-  x2("(((((((a*)b))))))c\\7", "aaabcaaa", 0, 8);
-  x3("(((((((a*)b))))))c\\7", "aaabcaaa", 0, 3, 7);
+  x2("(a*)(b*)\\1\\2", "aaabbaaabb", 10, 10);
+  x2("(a*)(b*)\\2", "aaabbbb", 7, 7);
+  x2("(((((((a*)b))))))c\\7", "aaabcaaa", 3, 5);
+  x3("(((((((a*)b))))))c\\7", "aaabcaaa", 3, 3, 7);
   x2("(a)(b)(c)\\2\\1\\3", "abcbac", 0, 6);
   x2("([a-d])\\1", "cc", 0, 2);
   x2("(\\w\\d\\s)\\1", "f5 f5 ", 0, 6);
@@ -548,18 +553,18 @@ extern int main(int argc, char* argv[])
   x2("(a)\\g<1>", "aa", 0, 2);
   x2("(?<!a)b", "cb", 1, 2);
   n("(?<!a)b", "ab");
-  x2("(?<!a|bc)b", "bbb", 0, 1);
+  x2("(?<!a|bc)b", "bbb", 2, 3);
   n("(?<!a|bc)z", "bcz");
   x2("(?<name1>a)", "a", 0, 1);
   x2("(?<name_2>ab)\\g<name_2>", "abab", 0, 4);
   x2("(?<name_3>.zv.)\\k<name_3>", "azvbazvb", 0, 8);
   x2("(?<=\\g<ab>)|-\\zEND (?<ab>XyZ)", "XyZ", 3, 3);
   x2("(?<n>|a\\g<n>)+", "", 0, 0);
-  x2("(?<n>|\\(\\g<n>\\))+$", "()(())", 0, 6);
+  x2("(?<n>|\\(\\g<n>\\))+$", "()(())", 6, 6);
   x3("\\g<n>(?<n>.){0}", "X", 0, 1, 1);
   x2("\\g<n>(abc|df(?<n>.YZ){2,8}){0}", "XYZ", 0, 3);
   x2("\\A(?<n>(a\\g<n>)|)\\z", "aaaa", 0, 4);
-  x2("(?<n>|\\g<m>\\g<n>)\\z|\\zEND (?<m>a|(b)\\g<m>)", "bbbbabba", 0, 8);
+  x2("(?<n>|\\g<m>\\g<n>)\\z|\\zEND (?<m>a|(b)\\g<m>)", "bbbbabba", 8, 8);
   x2("(?<name1240>\\w+\\sx)a+\\k<name1240>", "  fg xaaaaaaaafg x", 2, 18);
   x3("(z)()()(?<_9>a)\\g<_9>", "zaa", 2, 3, 1);
   x2("(.)(((?<_>a)))\\k<_>", "zaa", 0, 3);
@@ -571,50 +576,50 @@ extern int main(int argc, char* argv[])
   x3("(?:(?<n1>.)|(?<n1>..)|(?<n1>...)|(?<n1>....)|(?<n1>.....)|(?<n1>......)|(?<n1>.......)|(?<n1>........)|(?<n1>.........)|(?<n1>..........)|(?<n1>...........)|(?<n1>............)|(?<n1>.............)|(?<n1>..............))\\k<n1>$", "xxxxabcdefghijklmnabcdefghijklmn", 4, 18, 14);
   x3("(?<name1>)(?<name2>)(?<name3>)(?<name4>)(?<name5>)(?<name6>)(?<name7>)(?<name8>)(?<name9>)(?<name10>)(?<name11>)(?<name12>)(?<name13>)(?<name14>)(?<name15>)(?<name16>aaa)(?<name17>)$", "aaa", 0, 3, 16);
   x2("(?<foo>a|\\(\\g<foo>\\))", "a", 0, 1);
-  x2("(?<foo>a|\\(\\g<foo>\\))", "((((((a))))))", 0, 13);
-  x3("(?<foo>a|\\(\\g<foo>\\))", "((((((((a))))))))", 0, 17, 1);
-  x2("\\g<bar>|\\zEND(?<bar>.*abc$)", "abcxxxabc", 0, 9);
+  x2("(?<foo>a|\\(\\g<foo>\\))", "((((((a))))))", 6, 7);
+  x3("(?<foo>a|\\(\\g<foo>\\))", "((((((((a))))))))", 8, 9, 1);
+  x2("\\g<bar>|\\zEND(?<bar>.*abc$)", "abcxxxabc", 6, 9);
   x2("\\g<1>|\\zEND(.a.)", "bac", 0, 3);
   x3("\\g<_A>\\g<_A>|\\zEND(.a.)(?<_A>.b.)", "xbxyby", 3, 6, 1);
   x2("\\A(?:\\g<pon>|\\g<pan>|\\zEND  (?<pan>a|c\\g<pon>c)(?<pon>b|d\\g<pan>d))$", "cdcbcdc", 0, 7);
   x2("\\A(?<n>|a\\g<m>)\\z|\\zEND (?<m>\\g<n>)", "aaaa", 0, 4);
-  x2("(?<n>(a|b\\g<n>c){3,5})", "baaaaca", 1, 5);
-  x2("(?<n>(a|b\\g<n>c){3,5})", "baaaacaaaaa", 0, 10);
-  x2("(?<pare>\\(([^\\(\\)]++|\\g<pare>)*+\\))", "((a))", 0, 5);
+  x2("(?<n>(a|b\\g<n>c){3,5})", "baaaaca", 2, 5);
+  x2("(?<n>(a|b\\g<n>c){3,5})", "baaaacaaaaa", 8, 11);
+  x2("(?<pare>\\(([^\\(\\)]++|\\g<pare>)*+\\))", "((a))", 1, 4);
   x2("()*\\1", "", 0, 0);
   x2("(?:()|())*\\1\\2", "", 0, 0);
   x2("(?:a*|b*)*c", "abadc", 4, 5);
-  x3("(?:\\1a|())*", "a", 0, 0, 1);
-  x2("x((.)*)*x", "0x1x2x3", 1, 6);
+  x3("(?:\\1a|())*", "a", 1, 1, 1);
+  x2("x((.)*)*x", "0x1x2x3", 3, 6);
   x2("x((.)*)*x(?i:\\1)\\Z", "0x1x2x1X2", 1, 9);
   x2("(?:()|()|()|()|()|())*\\2\\5", "", 0, 0);
   x2("(?:()|()|()|(x)|()|())*\\2b\\5", "b", 0, 1);
   x2("[0-9-a]", "-", 0, 1);   // PR#44
   n("[0-9-a]", ":");          // PR#44
-  x3("(\\(((?:[^(]|\\g<1>)*)\\))", "(abc)(abc)", 1, 4, 2); // PR#43
+  x3("(\\(((?:[^(]|\\g<1>)*)\\))", "(abc)(abc)", 6, 9, 2); // PR#43
   x2("\\o{101}", "A", 0, 1);
   x2("\\A(a|b\\g<1>c)\\k<1+3>\\z", "bbacca", 0, 6);
   n("\\A(a|b\\g<1>c)\\k<1+3>\\z", "bbaccb");
   x2("(?i)\\A(a|b\\g<1>c)\\k<1+2>\\z", "bBACcbac", 0, 8);
   x2("(?i)(?<X>aa)|(?<X>bb)\\k<X>", "BBbb", 0, 4);
-  x2("(?:\\k'+1'B|(A)C)*", "ACAB", 0, 4); // relative backref by postitive number
+  x2("(?:\\k'+1'B|(A)C)*", "ACAB", 4, 4); // relative backref by postitive number
   x2("\\g<+2>(abc)(ABC){0}", "ABCabc", 0, 6); // relative call by positive number
-  x2("A\\g'0'|B()", "AAAAB", 0, 5);
-  x3("(A\\g'0')|B", "AAAAB", 0, 5, 1);
-  x2("(a*)(?(1))aa", "aaaaa", 0, 5);
-  x2("(a*)(?(-1))aa", "aaaaa", 0, 5);
+  x2("A\\g'0'|B()", "AAAAB", 4, 5);
+  x3("(A\\g'0')|B", "AAAAB", -1, -1, 1);
+  x2("(a*)(?(1))aa", "aaaaa", 3, 5);
+  x2("(a*)(?(-1))aa", "aaaaa", 3, 5);
   x2("(?<name>aaa)(?('name'))aa", "aaaaa", 0, 5);
-  x2("(a)(?(1)aa|bb)a", "aaaaa", 0, 4);
+  x2("(a)(?(1)aa|bb)a", "aaaaa", 1, 5);
   x2("(?:aa|())(?(<1>)aa|bb)a", "aabba", 0, 5);
   x2("(?:aa|())(?('1')aa|bb|cc)a", "aacca", 0, 5);
-  x3("(a*)(?(1)aa|a)b", "aaab", 0, 1, 1);
+  x3("(a*)(?(1)aa|a)b", "aaab", 1, 1, 1);
   n("(a)(?(1)a|b)c", "abc");
   x2("(a)(?(1)|)c", "ac", 0, 2);
   n("(?()aaa|bbb)", "bbb");
   x2("(a)(?(1+0)b|c)d", "abd", 0, 3);
   x2("(?:(?'name'a)|(?'name'b))(?('name')c|d)e", "ace", 0, 3);
   x2("(?:(?'name'a)|(?'name'b))(?('name')c|d)e", "bce", 0, 3);
-  x2("\\R", "\r\n", 0, 2);
+  x2("\\R", "\r\n", 1, 2);
   x2("\\R", "\r", 0, 1);
   x2("\\R", "\n", 0, 1);
   x2("\\R", "\x0b", 0, 1);
@@ -628,51 +633,51 @@ extern int main(int argc, char* argv[])
   x2("\\O", "\n", 0, 1);
   x2("(?m:\\O)", "\n", 0, 1);
   x2("(?-m:\\O)", "\n", 0, 1);
-  x2("\\K", "a", 0, 0);
+  x2("\\K", "a", 1, 1);
   x2("a\\K", "a", 1, 1);
   x2("a\\Kb", "ab", 1, 2);
   x2("(a\\Kb|ac\\Kd)", "acd", 2, 3);
-  x2("(a\\Kb|\\Kac\\K)*", "acababacab", 9, 10);
-  x2("(?:()|())*\\1", "abc", 0, 0);
-  x2("(?:()|())*\\2", "abc", 0, 0);
-  x2("(?:()|()|())*\\3\\1", "abc", 0, 0);
-  x2("(|(?:a(?:\\g'1')*))b|", "abc", 0, 2);
+  x2("(a\\Kb|\\Kac\\K)*", "acababacab", 10, 10);
+  x2("(?:()|())*\\1", "abc", 3, 3);
+  x2("(?:()|())*\\2", "abc", 3, 3);
+  x2("(?:()|()|())*\\3\\1", "abc", 3, 3);
+  x2("(|(?:a(?:\\g'1')*))b|", "abc", 3, 3);
   x2("^(\"|)(.*)\\1$", "XX", 0, 2);
-  x2("(abc|def|ghi|jkl|mno|pqr|stu){0,10}?\\z", "admno", 2, 5);
-  x2("(abc|(def|ghi|jkl|mno|pqr){0,7}?){5}\\z", "adpqrpqrpqr", 2, 11); // cover OP_REPEAT_INC_NG_SG
-  x2("(?!abc).*\\z", "abcde", 1, 5); // cover OP_PREC_READ_NOT_END
-  x2("(.{2,})?", "abcde", 0, 5); // up coverage
-  x2("((a|b|c|d|e|f|g|h|i|j|k|l|m|n)+)?", "abcde", 0, 5); // up coverage
-  x2("((a|b|c|d|e|f|g|h|i|j|k|l|m|n){3,})?", "abcde", 0, 5); // up coverage
-  x2("((?:a(?:b|c|d|e|f|g|h|i|j|k|l|m|n))+)?", "abacadae", 0, 8); // up coverage
-  x2("((?:a(?:b|c|d|e|f|g|h|i|j|k|l|m|n))+?)?z", "abacadaez", 0, 9); // up coverage
+  x2("(abc|def|ghi|jkl|mno|pqr|stu){0,10}?\\z", "admno", 5, 5);
+  x2("(abc|(def|ghi|jkl|mno|pqr){0,7}?){5}\\z", "adpqrpqrpqr", 11, 11); // cover OP_REPEAT_INC_NG_SG
+  x2("(?!abc).*\\z", "abcde", 5, 5); // cover OP_PREC_READ_NOT_END
+  x2("(.{2,})?", "abcde", 5, 5); // up coverage
+  x2("((a|b|c|d|e|f|g|h|i|j|k|l|m|n)+)?", "abcde", 5, 5); // up coverage
+  x2("((a|b|c|d|e|f|g|h|i|j|k|l|m|n){3,})?", "abcde", 5, 5); // up coverage
+  x2("((?:a(?:b|c|d|e|f|g|h|i|j|k|l|m|n))+)?", "abacadae", 8, 8); // up coverage
+  x2("((?:a(?:b|c|d|e|f|g|h|i|j|k|l|m|n))+?)?z", "abacadaez", 8, 9); // up coverage
   x2("\\A((a|b)\?\?)?z", "bz", 0, 2); // up coverage
   x2("((?<x>abc){0}a\\g<x>d)+", "aabcd", 0, 5); // up coverage
   x2("((?(abc)true|false))+", "false", 0, 5); // up coverage
-  x2("((?i:abc)d)+", "abcdABCd", 0, 8); // up coverage
+  x2("((?i:abc)d)+", "abcdABCd", 4, 8); // up coverage
   x2("((?<!abc)def)+", "bcdef", 2, 5); // up coverage
   x2("(\\ba)+", "aaa", 0, 1); // up coverage
   x2("()(?<x>ab)(?(<x>)a|b)", "aba", 0, 3); // up coverage
   x2("(?<=a.b)c", "azbc", 3, 4); // up coverage
   n("(?<=(?:abcde){30})z", "abc"); // up coverage
   x2("(?<=(?(a)a|bb))z", "aaz", 2, 3); // up coverage
-  x2("[a]*\\W", "aa@", 0, 3); // up coverage
-  x2("[a]*[b]", "aab", 0, 3); // up coverage
+  x2("[a]*\\W", "aa@", 2, 3); // up coverage
+  x2("[a]*[b]", "aab", 2, 3); // up coverage
   n("a*\\W", "aaa"); // up coverage
   n("(?W)a*\\W", "aaa"); // up coverage
   x2("(?<=ab(?<=ab))", "ab", 2, 2); // up coverage
   x2("(?<x>a)(?<x>b)(\\k<x>)+", "abbaab", 0, 6); // up coverage
-  x2("()(\\1)(\\2)", "abc", 0, 0); // up coverage
+  x2("()(\\1)(\\2)", "abc", 3, 3); // up coverage
   x2("((?(a)b|c))(\\1)", "abab", 0, 4); // up coverage
-  x2("(?<x>$|b\\g<x>)", "bbb", 0, 3); // up coverage
-  x2("(?<x>(?(a)a|b)|c\\g<x>)", "cccb", 0, 4); // up coverage
-  x2("(a)(?(1)a*|b*)+", "aaaa", 0, 4); // up coverage
-  x2("[[^abc]&&cde]*", "de", 0, 2); // up coverage
+  x2("(?<x>$|b\\g<x>)", "bbb", 3, 3); // up coverage
+  x2("(?<x>(?(a)a|b)|c\\g<x>)", "cccb", 3, 4); // up coverage
+  x2("(a)(?(1)a*|b*)+", "aaaa", 3, 4); // up coverage
+  x2("[[^abc]&&cde]*", "de", 2, 2); // up coverage
   n("(a){10}{10}", "aa"); // up coverage
-  x2("(?:a?)+", "aa", 0, 2); // up coverage
-  x2("(?:a?)*?", "a", 0, 0); // up coverage
-  x2("(?:a*)*?", "a", 0, 0); // up coverage
-  x2("(?:a+?)*", "a", 0, 1); // up coverage
+  x2("(?:a?)+", "aa", 2, 2); // up coverage
+  x2("(?:a?)*?", "a", 1, 1); // up coverage
+  x2("(?:a*)*?", "a", 1, 1); // up coverage
+  x2("(?:a+?)*", "a", 1, 1); // up coverage
   x2("\\h", "5", 0, 1); // up coverage
   x2("\\H", "z", 0, 1); // up coverage
   x2("[\\h]", "5", 0, 1); // up coverage
@@ -681,61 +686,61 @@ extern int main(int argc, char* argv[])
   x2("[\\u0041]", "A", 0, 1); // up coverage
 
   x2("(?~)", "", 0, 0);
-  x2("(?~)", "A", 0, 0);
-  x2("aaaaa(?~)", "aaaaaaaaaa", 0, 5);
-  x2("(?~(?:|aaa))", "aaa", 0, 0);
-  x2("(?~aaa|)", "aaa", 0, 0);
-  x2("a(?~(?~)).", "abcdefghijklmnopqrstuvwxyz", 0, 26); // nested absent functions cause strange result
+  x2("(?~)", "A", 1, 1);
+  x2("aaaaa(?~)", "aaaaaaaaaa", 5, 10);
+  x2("(?~(?:|aaa))", "aaa", 3, 3);
+  x2("(?~aaa|)", "aaa", 3, 3);
+  x2("a(?~(?~)).", "abcdefghijklmnopqrstuvwxyz", 0, 26); // !!!
   x2("/\\*(?~\\*/)\\*/", "/* */ */", 0, 5);
   x2("(?~\\w+)zzzzz", "zzzzz", 0, 5);
   x2("(?~\\w*)zzzzz", "zzzzz", 0, 5);
-  x2("(?~A.C|B)", "ABC", 0, 0);
-  x2("(?~XYZ|ABC)a", "ABCa", 1, 4);
-  x2("(?~XYZ|ABC)a", "aABCa", 0, 1);
-  x2("<[^>]*>(?~[<>])</[^>]*>", "<a>vvv</a>   <b>  </b>", 0, 10);
-  x2("(?~ab)", "ccc\ndab", 0, 5);
-  x2("(?m:(?~ab))", "ccc\ndab", 0, 5);
-  x2("(?-m:(?~ab))", "ccc\ndab", 0, 5);
+  x2("(?~A.C|B)", "ABC", 3, 3);
+  x2("(?~XYZ|ABC)a", "ABCa", 3, 4);
+  x2("(?~XYZ|ABC)a", "aABCa", 4, 5);
+  x2("<[^>]*>(?~[<>])</[^>]*>", "<a>vvv</a>   <b>  </b>", 13, 22);
+  x2("(?~ab)", "ccc\ndab", 7, 7);
+  x2("(?m:(?~ab))", "ccc\ndab", 7, 7);
+  x2("(?-m:(?~ab))", "ccc\ndab", 7, 7);
   x2("(?~abc)xyz", "xyz012345678901234567890123456789abc", 0, 3);
 
   // absent with expr
-  x2("(?~|78|\\d*)", "123456789", 0, 6);
-  x2("(?~|def|(?:abc|de|f){0,100})", "abcdedeabcfdefabc", 0, 11);
-  x2("(?~|ab|.*)", "ccc\nddd", 0, 3);
-  x2("(?~|ab|\\O*)", "ccc\ndab", 0, 5);
-  x2("(?~|ab|\\O{2,10})", "ccc\ndab", 0, 5);
+  x2("(?~|78|\\d*)", "123456789", 9, 9);
+  x2("(?~|def|(?:abc|de|f){0,100})", "abcdedeabcfdefabc", 17, 17);
+  x2("(?~|ab|.*)", "ccc\nddd", 7, 7);
+  x2("(?~|ab|\\O*)", "ccc\ndab", 7, 7);
+  x2("(?~|ab|\\O{2,10})", "ccc\ndab", 3, 5);
   x2("(?~|ab|\\O{1,10})", "ab", 1, 2);
   n("(?~|ab|\\O{2,10})", "ab");
-  x2("(?~|abc|\\O{1,10})", "abc", 1, 3);
+  x2("(?~|abc|\\O{1,10})", "abc", 2, 3);
   x2("(?~|ab|\\O{5,10})|abc", "abc", 0, 3);
-  x2("(?~|ab|\\O{1,10})", "cccccccccccab", 0, 10);
-  x2("(?~|aaa|)", "aaa", 0, 0);
-  x2("(?~||a*)", "aaaaaa", 0, 0);
-  x2("(?~||a*?)", "aaaaaa", 0, 0);
-  x2("(a)(?~|b|\\1)", "aaaaaa", 0, 2);
-  x2("(a)(?~|bb|(?:a\\1)*)", "aaaaaa", 0, 5);
-  x2("(b|c)(?~|abac|(?:a\\1)*)", "abababacabab", 1, 4);
+  x2("(?~|ab|\\O{1,10})", "cccccccccccab", 12, 13);
+  x2("(?~|aaa|)", "aaa", 3, 3);
+  x2("(?~||a*)", "aaaaaa", 6, 6);
+  x2("(?~||a*?)", "aaaaaa", 6, 6);
+  x2("(a)(?~|b|\\1)", "aaaaaa", 4, 6);
+  x2("(a)(?~|bb|(?:a\\1)*)", "aaaaaa", 5, 6);
+  x2("(b|c)(?~|abac|(?:a\\1)*)", "abababacabab", 11, 12);
   n("(?~|c|a*+)a", "aaaaa");
-  x2("(?~|aaaaa|a*+)", "aaaaa", 0, 0);
-  x2("(?~|aaaaaa|a*+)b", "aaaaaab", 1, 7);
-  x2("(?~|abcd|(?>))", "zzzabcd", 0, 0);
-  x2("(?~|abc|a*?)", "aaaabc", 0, 0);
+  x2("(?~|aaaaa|a*+)", "aaaaa", 5, 5);
+  x2("(?~|aaaaaa|a*+)b", "aaaaaab", 6, 7);
+  x2("(?~|abcd|(?>))", "zzzabcd", 7, 7);
+  x2("(?~|abc|a*?)", "aaaabc", 6, 6);
 
   // absent range cutter
-  x2("(?~|abc)a*", "aaaaaabc", 0, 5);
+  x2("(?~|abc)a*", "aaaaaabc", 8, 8);
   x2("(?~|abc)a*z|aaaaaabc", "aaaaaabc", 0, 8);
-  x2("(?~|aaaaaa)a*", "aaaaaa", 0, 0);
+  x2("(?~|aaaaaa)a*", "aaaaaa", 6, 6);
   x2("(?~|abc)aaaa|aaaabc", "aaaabc", 0, 6);
   x2("(?>(?~|abc))aaaa|aaaabc", "aaaabc", 0, 6);
   x2("(?~|)a", "a", 0, 1);
   n("(?~|a)a", "a");
   x2("(?~|a)(?~|)a", "a", 0, 1);
-  x2("(?~|a).*(?~|)a", "bbbbbbbbbbbbbbbbbbbba", 0, 21);
-  x2("(?~|abc).*(xyz|pqr)(?~|)abc", "aaaaxyzaaapqrabc", 0, 16);
-  x2("(?~|abc).*(xyz|pqr)(?~|)abc", "aaaaxyzaaaabcpqrabc", 11, 19);
+  x2("(?~|a).*(?~|)a", "bbbbbbbbbbbbbbbbbbbba", 20, 21);
+  x2("(?~|abc).*(xyz|pqr)(?~|)abc", "aaaaxyzaaapqrabc", 10, 16);
+  x2("(?~|abc).*(xyz|pqr)(?~|)abc", "aaaaxyzaaaabcpqrabc", 13, 19);
   n("\\A(?~|abc).*(xyz|pqrabc)(?~|)abc", "aaaaxyzaaaabcpqrabcabc");
 
-  x2("", "あ", 0, 0);
+  x2("", "あ", 3, 3);
   x2("あ", "あ", 0, 3);
   n("い", "あ");
   x2("うう", "うう", 0, 6);
@@ -751,9 +756,9 @@ extern int main(int argc, char* argv[])
   x2("[\\W]", "う$", 3, 4);
   x2("\\S", "そ", 0, 3);
   x2("\\S", "漢", 0, 3);
-  x2("\\b", "気 ", 0, 0);
-  x2("\\b", " ほ", 1, 1);
-  x2("\\B", "せそ ", 3, 3);
+  x2("\\b", "気 ", 3, 3);
+  x2("\\b", " ほ", 4, 4);
+  x2("\\B", "せそ ", 7, 7);
   x2("\\B", "う ", 4, 4);
   x2("\\B", " い", 0, 0);
   x2("[たち]", "ち", 0, 3);
@@ -785,9 +790,9 @@ extern int main(int argc, char* argv[])
   x2("むめも\\Z", "むめも", 0, 9);
   x2("かきく\\z", "かきく", 0, 9);
   x2("かきく\\Z", "かきく\n", 0, 9);
-  x2("\\Gぽぴ", "ぽぴ", 0, 6);
+  n("\\Gぽぴ", "ぽぴ");
   n("\\Gえ", "うえお");
-  n("とて\\G", "とて");
+  x2("とて\\G", "とて", 0, 6);
   n("まみ\\A", "まみ");
   n("ま\\Aみ", "まみ");
   x2("(?=せ)せ", "せ", 0, 3);
@@ -800,21 +805,21 @@ extern int main(int argc, char* argv[])
   x2("(?m:よ.)", "よ\n", 0, 4);
   x2("(?m:.め)", "ま\nめ", 3, 7);
   x2("あ?", "", 0, 0);
-  x2("変?", "化", 0, 0);
-  x2("変?", "変", 0, 3);
+  x2("変?", "化", 3, 3);
+  x2("変?", "変", 3, 3);
   x2("量*", "", 0, 0);
-  x2("量*", "量", 0, 3);
-  x2("子*", "子子子", 0, 9);
-  x2("馬*", "鹿馬馬馬馬", 0, 0);
+  x2("量*", "量", 3, 3);
+  x2("子*", "子子子", 9, 9);
+  x2("馬*", "鹿馬馬馬馬", 15, 15);
   n("山+", "");
   x2("河+", "河", 0, 3);
-  x2("時+", "時時時時", 0, 12);
-  x2("え+", "ええううう", 0, 6);
-  x2("う+", "おうううう", 3, 15);
-  x2(".?", "た", 0, 3);
-  x2(".*", "ぱぴぷぺ", 0, 12);
+  x2("時+", "時時時時", 9, 12);
+  x2("え+", "ええううう", 3, 6);
+  x2("う+", "おうううう", 12, 15);
+  x2(".?", "た", 3, 3);
+  x2(".*", "ぱぴぷぺ", 12, 12);
   x2(".+", "ろ", 0, 3);
-  x2(".+", "いうえか\n", 0, 12);
+  x2(".+", "いうえか\n", 9, 12);
   x2("あ|い", "あ", 0, 3);
   x2("あ|い", "い", 0, 3);
   x2("あい|いう", "あい", 0, 6);
@@ -826,9 +831,9 @@ extern int main(int argc, char* argv[])
   x2("あ|い|うえ|おかき|く|けこさ|しすせ|そ|たち|つてとなに|ぬね", "しすせ", 0, 9);
   n("あ|い|うえ|おかき|く|けこさ|しすせ|そ|たち|つてとなに|ぬね", "すせ");
   x2("あ|^わ", "ぶあ", 3, 6);
-  x2("あ|^を", "をあ", 0, 3);
+  x2("あ|^を", "をあ", 3, 6);
   x2("鬼|\\G車", "け車鬼", 6, 9);
-  x2("鬼|\\G車", "車鬼", 0, 3);
+  x2("鬼|\\G車", "車鬼", 3, 6);
   x2("鬼|\\A車", "b車鬼", 4, 7);
   x2("鬼|\\A車", "車", 0, 3);
   x2("鬼|車\\Z", "車鬼", 3, 6);
@@ -837,8 +842,8 @@ extern int main(int argc, char* argv[])
   x2("鬼|車\\z", "車鬼", 3, 6);
   x2("鬼|車\\z", "車", 0, 3);
   x2("\\w|\\s", "お", 0, 3);
-  x2("\\w|%", "%お", 0, 1);
-  x2("\\w|[&$]", "う&", 0, 3);
+  x2("\\w|%", "%お", 1, 4);
+  x2("\\w|[&$]", "う&", 3, 4);
   x2("[い-け]", "う", 0, 3);
   x2("[い-け]|[^か-こ]", "あ", 0, 3);
   x2("[い-け]|[^か-こ]", "か", 0, 3);
@@ -851,70 +856,70 @@ extern int main(int argc, char* argv[])
   x2("(?<=あ|いう)い", "いうい", 6, 9);
   n("(?>あ|あいえ)う", "あいえう");
   x2("(?>あいえ|あ)う", "あいえう", 0, 12);
-  x2("あ?|い", "あ", 0, 3);
-  x2("あ?|い", "い", 0, 0);
+  x2("あ?|い", "あ", 3, 3);
+  x2("あ?|い", "い", 3, 3);
   x2("あ?|い", "", 0, 0);
-  x2("あ*|い", "ああ", 0, 6);
-  x2("あ*|い*", "いあ", 0, 0);
-  x2("あ*|い*", "あい", 0, 3);
-  x2("[aあ]*|い*", "aあいいい", 0, 4);
+  x2("あ*|い", "ああ", 6, 6);
+  x2("あ*|い*", "いあ", 6, 6);
+  x2("あ*|い*", "あい", 6, 6);
+  x2("[aあ]*|い*", "aあいいい", 13, 13);
   x2("あ+|い*", "", 0, 0);
-  x2("あ+|い*", "いいい", 0, 9);
-  x2("あ+|い*", "あいいい", 0, 3);
-  x2("あ+|い*", "aあいいい", 0, 0);
+  x2("あ+|い*", "いいい", 9, 9);
+  x2("あ+|い*", "あいいい", 12, 12);
+  x2("あ+|い*", "aあいいい", 13, 13);
   n("あ+|い+", "");
-  x2("(あ|い)?", "い", 0, 3);
-  x2("(あ|い)*", "いあ", 0, 6);
-  x2("(あ|い)+", "いあい", 0, 9);
-  x2("(あい|うあ)+", "うああいうえ", 0, 12);
-  x2("(あい|うえ)+", "うああいうえ", 6, 18);
-  x2("(あい|うあ)+", "ああいうあ", 3, 15);
-  x2("(あい|うあ)+", "あいをうあ", 0, 6);
-  x2("(あい|うあ)+", "$$zzzzあいをうあ", 6, 12);
-  x2("(あ|いあい)+", "あいあいあ", 0, 15);
+  x2("(あ|い)?", "い", 3, 3);
+  x2("(あ|い)*", "いあ", 6, 6);
+  x2("(あ|い)+", "いあい", 6, 9);
+  x2("(あい|うあ)+", "うああいうえ", 6, 12);
+  x2("(あい|うえ)+", "うああいうえ", 12, 18);
+  x2("(あい|うあ)+", "ああいうあ", 9, 15);
+  x2("(あい|うあ)+", "あいをうあ", 9, 15);
+  x2("(あい|うあ)+", "$$zzzzあいをうあ", 15, 21);
+  x2("(あ|いあい)+", "あいあいあ", 12, 15);
   x2("(あ|いあい)+", "いあ", 3, 6);
-  x2("(あ|いあい)+", "いあああいあ", 3, 12);
+  x2("(あ|いあい)+", "いあああいあ", 15, 18);
   x2("(?:あ|い)(?:あ|い)", "あい", 0, 6);
-  x2("(?:あ*|い*)(?:あ*|い*)", "あああいいい", 0, 9);
-  x2("(?:あ*|い*)(?:あ+|い+)", "あああいいい", 0, 18);
-  x2("(?:あ+|い+){2}", "あああいいい", 0, 18);
-  x2("(?:あ+|い+){1,2}", "あああいいい", 0, 18);
+  x2("(?:あ*|い*)(?:あ*|い*)", "あああいいい", 18, 18);
+  x2("(?:あ*|い*)(?:あ+|い+)", "あああいいい", 15, 18);
+  x2("(?:あ+|い+){2}", "あああいいい", 12, 18);
+  x2("(?:あ+|い+){1,2}", "あああいいい", 15, 18);
   x2("(?:あ+|\\Aい*)うう", "うう", 0, 6);
   n("(?:あ+|\\Aい*)うう", "あいうう");
-  x2("(?:^あ+|い+)*う", "ああいいいあいう", 18, 24);
-  x2("(?:^あ+|い+)*う", "ああいいいいう", 0, 21);
-  x2("う{0,}", "うううう", 0, 12);
+  x2("(?:^あ+|い+)*う", "ああいいいあいう", 21, 24);
+  x2("(?:^あ+|い+)*う", "ああいいいいう", 18, 21);
+  x2("う{0,}", "うううう", 12, 12);
   x2("あ|(?i)c", "C", 0, 1);
   x2("(?i)c|あ", "C", 0, 1);
   x2("(?i:あ)|a", "a", 0, 1);
   n("(?i:あ)|a", "A");
-  x2("[あいう]?", "あいう", 0, 3);
-  x2("[あいう]*", "あいう", 0, 9);
-  x2("[^あいう]*", "あいう", 0, 0);
+  x2("[あいう]?", "あいう", 9, 9);
+  x2("[あいう]*", "あいう", 9, 9);
+  x2("[^あいう]*", "あいう", 9, 9);
   n("[^あいう]+", "あいう");
-  x2("あ?\?", "あああ", 0, 0);
+  x2("あ?\?", "あああ", 9, 9);
   x2("いあ?\?い", "いあい", 0, 9);
-  x2("あ*?", "あああ", 0, 0);
+  x2("あ*?", "あああ", 9, 9);
   x2("いあ*?", "いああ", 0, 3);
   x2("いあ*?い", "いああい", 0, 12);
-  x2("あ+?", "あああ", 0, 3);
+  x2("あ+?", "あああ", 6, 9);
   x2("いあ+?", "いああ", 0, 6);
   x2("いあ+?い", "いああい", 0, 12);
-  x2("(?:天?)?\?", "天", 0, 0);
-  x2("(?:天?\?)?", "天", 0, 0);
-  x2("(?:夢?)+?", "夢夢夢", 0, 3);
-  x2("(?:風+)?\?", "風風風", 0, 0);
-  x2("(?:雪+)?\?霜", "雪雪雪霜", 0, 12);
+  x2("(?:天?)?\?", "天", 3, 3);
+  x2("(?:天?\?)?", "天", 3, 3);
+  x2("(?:夢?)+?", "夢夢夢", 9, 9);
+  x2("(?:風+)?\?", "風風風", 9, 9);
+  x2("(?:雪+)?\?霜", "雪雪雪霜", 9, 12);
   x2("(?:あい)?{2}", "", 0, 0);
-  x2("(?:鬼車)?{2}", "鬼車鬼車鬼", 0, 12);
-  x2("(?:鬼車)*{0}", "鬼車鬼車鬼", 0, 0);
-  x2("(?:鬼車){3,}", "鬼車鬼車鬼車鬼車", 0, 24);
+  x2("(?:鬼車)?{2}", "鬼車鬼車鬼", 15, 15);
+  x2("(?:鬼車)*{0}", "鬼車鬼車鬼", 15, 15);
+  x2("(?:鬼車){3,}", "鬼車鬼車鬼車鬼車", 6, 24);
   n("(?:鬼車){3,}", "鬼車鬼車");
-  x2("(?:鬼車){2,4}", "鬼車鬼車鬼車", 0, 18);
-  x2("(?:鬼車){2,4}", "鬼車鬼車鬼車鬼車鬼車", 0, 24);
-  x2("(?:鬼車){2,4}?", "鬼車鬼車鬼車鬼車鬼車", 0, 12);
+  x2("(?:鬼車){2,4}", "鬼車鬼車鬼車", 6, 18);
+  x2("(?:鬼車){2,4}", "鬼車鬼車鬼車鬼車鬼車", 18, 30);
+  x2("(?:鬼車){2,4}?", "鬼車鬼車鬼車鬼車鬼車", 18, 30);
   x2("(?:鬼車){,}", "鬼車{,}", 0, 9);
-  x2("(?:かきく)+?{2}", "かきくかきくかきく", 0, 18);
+  x2("(?:かきく)+?{2}", "かきくかきくかきく", 9, 27);
   x3("(火)", "火", 0, 3, 1);
   x3("(火水)", "火水", 0, 6, 1);
   x2("((時間))", "時間", 0, 6);
@@ -929,14 +934,14 @@ extern int main(int argc, char* argv[])
   x2("(^あ)", "あ", 0, 3);
   x3("(あ)|(あ)", "いあ", 3, 6, 1);
   x3("(^あ)|(あ)", "いあ", 3, 6, 2);
-  x3("(あ?)", "あああ", 0, 3, 1);
-  x3("(ま*)", "ままま", 0, 9, 1);
+  x3("(あ?)", "あああ", 9, 9, 1);
+  x3("(ま*)", "ままま", 9, 9, 1);
   x3("(と*)", "", 0, 0, 1);
-  x3("(る+)", "るるるるるるる", 0, 21, 1);
-  x3("(ふ+|へ*)", "ふふふへへ", 0, 9, 1);
-  x3("(あ+|い?)", "いいいああ", 0, 3, 1);
-  x3("(あいう)?", "あいう", 0, 9, 1);
-  x3("(あいう)*", "あいう", 0, 9, 1);
+  x3("(る+)", "るるるるるるる", 18, 21, 1);
+  x3("(ふ+|へ*)", "ふふふへへ", 15, 15, 1);
+  x3("(あ+|い?)", "いいいああ", 15, 15, 1);
+  x3("(あいう)?", "あいう", -1, -1, 1);
+  x3("(あいう)*", "あいう", -1, -1, 1);
   x3("(あいう)+", "あいう", 0, 9, 1);
   x3("(さしす|あいう)+", "あいう", 0, 9, 1);
   x3("([なにぬ][かきく]|かきく)+", "かきく", 0, 9, 1);
@@ -945,7 +950,7 @@ extern int main(int argc, char* argv[])
   x3("((?=あん)あ)", "あんい", 0, 3, 1);
   x3("あいう|(.あいえ)", "んあいえ", 0, 12, 1);
   x3("あ*(.)", "ああああん", 12, 15, 1);
-  x3("あ*?(.)", "ああああん", 0, 3, 1);
+  x3("あ*?(.)", "ああああん", 12, 15, 1);
   x3("あ*?(ん)", "ああああん", 12, 15, 1);
   x3("[いうえ]あ*(.)", "えああああん", 15, 18, 1);
   x3("(\\Aいい)うう", "いいうう", 0, 6, 1);
@@ -956,17 +961,17 @@ extern int main(int argc, char* argv[])
   n("ろろ(るる$)", "ろろるるる");
   x2("(無)\\1", "無無", 0, 6);
   n("(無)\\1", "無武");
-  x2("(空?)\\1", "空空", 0, 6);
-  x2("(空?\?)\\1", "空空", 0, 0);
-  x2("(空*)\\1", "空空空空空", 0, 12);
-  x3("(空*)\\1", "空空空空空", 0, 6, 1);
+  x2("(空?)\\1", "空空", 6, 6);
+  x2("(空?\?)\\1", "空空", 6, 6);
+  x2("(空*)\\1", "空空空空空", 15, 15);
+  x3("(空*)\\1", "空空空空空", 15, 15, 1);
   x2("あ(い*)\\1", "あいいいい", 0, 15);
   x2("あ(い*)\\1", "あい", 0, 3);
-  x2("(あ*)(い*)\\1\\2", "あああいいあああいい", 0, 30);
-  x2("(あ*)(い*)\\2", "あああいいいい", 0, 21);
-  x3("(あ*)(い*)\\2", "あああいいいい", 9, 15, 2);
-  x2("(((((((ぽ*)ぺ))))))ぴ\\7", "ぽぽぽぺぴぽぽぽ", 0, 24);
-  x3("(((((((ぽ*)ぺ))))))ぴ\\7", "ぽぽぽぺぴぽぽぽ", 0, 9, 7);
+  x2("(あ*)(い*)\\1\\2", "あああいいあああいい", 30, 30);
+  x2("(あ*)(い*)\\2", "あああいいいい", 21, 21);
+  x3("(あ*)(い*)\\2", "あああいいいい", 21, 21, 2);
+  x2("(((((((ぽ*)ぺ))))))ぴ\\7", "ぽぽぽぺぴぽぽぽ", 9, 15);
+  x3("(((((((ぽ*)ぺ))))))ぴ\\7", "ぽぽぽぺぴぽぽぽ", 9, 9, 7);
   x2("(は)(ひ)(ふ)\\2\\1\\3", "はひふひはふ", 0, 18);
   x2("([き-け])\\1", "くく", 0, 6);
   x2("(\\w\\d\\s)\\1", "あ5 あ5 ", 0, 10);
@@ -983,7 +988,7 @@ extern int main(int argc, char* argv[])
   x3("(.(やいゆ)\\2)", "zやいゆやいゆ", 0, 19, 1);
   x3("(.(..\\d.)\\2)", "あ12341234", 0, 11, 1);
   x2("((?i:あvず))\\1", "あvずあvず", 0, 14);
-  x2("(?<愚か>変|\\(\\g<愚か>\\))", "((((((変))))))", 0, 15);
+  x2("(?<愚か>変|\\(\\g<愚か>\\))", "((((((変))))))", 6, 9);
   x2("\\A(?:\\g<阿_1>|\\g<云_2>|\\z終了  (?<阿_1>観|自\\g<云_2>自)(?<云_2>在|菩薩\\g<阿_1>菩薩))$", "菩薩自菩薩自在自菩薩自菩薩", 0, 39);
   x2("[[ひふ]]", "ふ", 0, 3);
   x2("[[いおう]か]", "か", 0, 3);
@@ -1010,8 +1015,8 @@ extern int main(int argc, char* argv[])
   x2("a<b>バージョンのダウンロード<\\/b>", "a<b>バージョンのダウンロード</b>", 0, 44);
   x2(".<b>バージョンのダウンロード<\\/b>", "a<b>バージョンのダウンロード</b>", 0, 44);
   x2("\\n?\\z", "こんにちは", 15, 15);
-  x2("(?m).*", "青赤黄", 0, 9);
-  x2("(?m).*a", "青赤黄a", 0, 10);
+  x2("(?m).*", "青赤黄", 9, 9);
+  x2("(?m).*a", "青赤黄a", 9, 10);
 
   x2("\\p{Hiragana}", "ぴ", 0, 3);
   n("\\P{Hiragana}", "ぴ");
@@ -1075,20 +1080,20 @@ extern int main(int argc, char* argv[])
   n("(?-W:\\W)", "k");
   n("(?W:\\W)", "k");
 
-  x2("(?-W:\\b)", "こ", 0, 0);
+  x2("(?-W:\\b)", "こ", 3, 3);
   n("(?W:\\b)", "こ");
-  x2("(?-W:\\b)", "h", 0, 0);
-  x2("(?W:\\b)", "h", 0, 0);
+  x2("(?-W:\\b)", "h", 1, 1);
+  x2("(?W:\\b)", "h", 1, 1);
   n("(?-W:\\B)", "こ");
-  x2("(?W:\\B)", "こ", 0, 0);
+  x2("(?W:\\B)", "こ", 3, 3);
   n("(?-W:\\B)", "h");
   n("(?W:\\B)", "h");
-  x2("(?-P:\\b)", "こ", 0, 0);
+  x2("(?-P:\\b)", "こ", 3, 3);
   n("(?P:\\b)", "こ");
-  x2("(?-P:\\b)", "h", 0, 0);
-  x2("(?P:\\b)", "h", 0, 0);
+  x2("(?-P:\\b)", "h", 1, 1);
+  x2("(?P:\\b)", "h", 1, 1);
   n("(?-P:\\B)", "こ");
-  x2("(?P:\\B)", "こ", 0, 0);
+  x2("(?P:\\B)", "こ", 3, 3);
   n("(?-P:\\B)", "h");
   n("(?P:\\B)", "h");
 
@@ -1152,28 +1157,28 @@ extern int main(int argc, char* argv[])
 
   // Text Segment: Extended Grapheme Cluster <-> Word Boundary
   x2("(?y{g})\\yabc\\y", "abc", 0, 3);
-  x2("(?y{g})\\y\\X\\y", "abc", 0, 1);
+  x2("(?y{g})\\y\\X\\y", "abc", 2, 3);
   x2("(?y{w})\\yabc\\y", "abc", 0, 3); // WB1, WB2
-  x2("(?y{w})\\X", "\r\n", 0, 2); // WB3
-  x2("(?y{w})\\X", "\x0cz", 0, 1); // WB3a
-  x2("(?y{w})\\X", "q\x0c", 0, 1); // WB3b
-  x2("(?y{w})\\X", "\xE2\x80\x8D\xE2\x9D\x87", 0, 6); // WB3c
-  x2("(?y{w})\\X", "\x20\x20", 0, 2); // WB3d
-  x2("(?y{w})\\X", "a\xE2\x80\x8D", 0, 4); // WB4
+  x2("(?y{w})\\y\\X", "\r\n", 0, 2); // WB3
+  x2("(?y{w})\\X", "\x0cz", 1, 2); // WB3a
+  x2("(?y{w})\\X", "q\x0c", 1, 2); // WB3b
+  x2("(?y{w})\\y\\X", "\xE2\x80\x8D\xE2\x9D\x87", 0, 6); // WB3c
+  x2("(?y{w})\\y\\X", "\x20\x20", 0, 2); // WB3d
+  x2("(?y{w})\\y\\X", "a\xE2\x80\x8D", 0, 4); // WB4
   x2("(?y{w})\\y\\X\\y", "abc", 0, 3); // WB5
   x2("(?y{w})\\y\\X\\y", "v\xCE\x87w", 0, 4); // WB6, WB7
   x2("(?y{w})\\y\\X\\y", "\xD7\x93\x27", 0, 3); // WB7a
   x2("(?y{w})\\y\\X\\y", "\xD7\x93\x22\xD7\x93", 0, 5); // WB7b, WB7c
-  x2("(?y{w})\\X", "14 45", 0, 2); // WB8
-  x2("(?y{w})\\X", "a14", 0, 3); // WB9
-  x2("(?y{w})\\X", "832e", 0, 4); // WB10
-  x2("(?y{w})\\X", "8\xEF\xBC\x8C\xDB\xB0", 0, 6); // WB11, WB12
+  x2("(?y{w})\\y\\X", "14 45", 3, 5); // WB8
+  x2("(?y{w})\\y\\X", "a14", 0, 3); // WB9
+  x2("(?y{w})\\y\\X", "832e", 0, 4); // WB10
+  x2("(?y{w})\\y\\X", "8\xEF\xBC\x8C\xDB\xB0", 0, 6); // WB11, WB12
   x2("(?y{w})\\y\\X\\y", "ケン", 0, 6); // WB13
   x2("(?y{w})\\y\\X\\y", "ケン\xE2\x80\xAFタ", 0, 12); // WB13a, WB13b
-  x2("(?y{w})\\y\\X\\y", "\x21\x23", 0, 1); // WB999
-  x2("(?y{w})\\y\\X\\y", "山ア", 0, 3);
-  x2("(?y{w})\\X", "3.14", 0, 4);
-  x2("(?y{w})\\X", "3 14", 0, 1);
+  x2("(?y{w})\\y\\X\\y", "\x21\x23", 1, 2); // WB999
+  x2("(?y{w})\\y\\X\\y", "山ア", 3, 6);
+  x2("(?y{w})\\y\\X", "3.14", 0, 4);
+  x2("(?y{w})\\y\\X", "3 14", 2, 4);
 
   x2("\\x40", "@", 0, 1);
   x2("\\x1", "\x01", 0, 1);
@@ -1184,33 +1189,33 @@ extern int main(int argc, char* argv[])
 
   x2("c.*\\b", "abc", 2, 3);
   x2("\\b.*abc.*\\b", "abc", 0, 3);
-  x2("((?()0+)+++(((0\\g<0>)0)|())++++((?(1)(0\\g<0>))++++++0*())++++((?(1)(0\\g<1>)+)++++++++++*())++++((?(1)((0)\\g<0>)+)++())+0++*+++(((0\\g<0>))*())++++((?(1)(0\\g<0>)+)++++++++++*|)++++*+++((?(1)((0)\\g<0>)+)+++++++++())++*|)++++((?()0))|", "abcde", 0, 0); // #139
+  x2("((?()0+)+++(((0\\g<0>)0)|())++++((?(1)(0\\g<0>))++++++0*())++++((?(1)(0\\g<1>)+)++++++++++*())++++((?(1)((0)\\g<0>)+)++())+0++*+++(((0\\g<0>))*())++++((?(1)(0\\g<0>)+)++++++++++*|)++++*+++((?(1)((0)\\g<0>)+)+++++++++())++*|)++++((?()0))|", "abcde", 5, 5); // #139
 
   n("(*FAIL)", "abcdefg");
   n("abcd(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)(*FAIL)", "abcdefg");
-  x2("(?:[ab]|(*MAX{2}).)*", "abcbaaccaaa", 0, 7);
+  x2("(?:[ab]|(*MAX{2}).)*", "abcbaaccaaa", 11, 11);
   x2("(?:(*COUNT[AB]{X})[ab]|(*COUNT[CD]{X})[cd])*(*CMP{AB,<,CD})",
-     "abababcdab", 5, 8);
+     "abababcdab", 7, 8);
   x2("(?(?{....})123|456)", "123", 0, 3);
   x2("(?(*FAIL)123|456)", "456", 0, 3);
 
-  x2("\\g'0'++{,0}",   "abcdefgh", 0, 0);
-  x2("\\g'0'++{,0}?",  "abcdefgh", 0, 0);
+  x2("\\g'0'++{,0}",   "abcdefgh", 8, 8);
+  x2("\\g'0'++{,0}?",  "abcdefgh", 8, 8);
   x2("\\g'0'++{,0}b",  "abcdefgh", 1, 2);
   x2("\\g'0'++{,0}?def", "abcdefgh", 3, 6);
-  x2("a{1,3}?", "aaa", 0, 1);
+  x2("a{1,3}?", "aaa", 2, 3);
   x2("a{3}", "aaa", 0, 3);
-  x2("a{3}?", "aaa", 0, 3);
-  x2("a{3}?", "aa", 0, 0);
+  x2("a{3}?", "aaa", 3, 3);
+  x2("a{3}?", "aa", 2, 2);
   x2("a{3,3}?", "aaa", 0, 3);
   n("a{3,3}?", "aa");
-  x2("a{1,3}+", "aaaaaa", 0, 6);
-  x2("a{3}+", "aaaaaa", 0, 6);
-  x2("a{3,3}+", "aaaaaa", 0, 6);
+  x2("a{1,3}+", "aaaaaa", 5, 6);
+  x2("a{3}+", "aaaaaa", 3, 6);
+  x2("a{3,3}+", "aaaaaa", 3, 6);
   n("a{2,3}?",  "a");
   n("a{3,2}a", "aaa");
-  x2("a{3,2}b", "aaab", 0, 4);
-  x2("a{3,2}b", "aaaab", 1, 5);
+  x2("a{3,2}b", "aaab", 1, 4);
+  x2("a{3,2}b", "aaaab", 2, 5);
   x2("a{3,2}b", "aab", 0, 3);
   x2("a{3,2}?", "", 0, 0);     /* == (?:a{3,2})?*/
   x2("a{2,3}+a", "aaa", 0, 3); /* == (?:a{2,3})+*/
@@ -1224,7 +1229,7 @@ extern int main(int argc, char* argv[])
   x2("(a.c|def)(.{4})(?<=\\1)", "abcdabc", 0, 7);
   x2("(a.c|de)(.{4})(?<=\\1)", "abcdabc", 0, 7);
   x2("(a.c|def)(.{5})(?<=d\\1e)", "abcdabce", 0, 8);
-  x2("(a.c|.)d(?<=\\k<1>d)", "zzzzzabcdabc", 5, 9);
+  x2("(a.c|.)d(?<=\\k<1>d)", "zzzzzabcdabc", 7, 9);
   x2("(?<=az*)abc", "azzzzzzzzzzabcdabcabc", 11, 14);
   x2("(?<=ab|abc|abcd)ef", "abcdef", 4, 6);
   x2("(?<=ta+|tb+|tc+|td+)zz", "tcccccccccczz", 11, 13);
@@ -1238,8 +1243,8 @@ extern int main(int argc, char* argv[])
   x2("(?<=(t.{7}|t.{5}|t.{2}))zz", "tczzzz", 3, 5);
   x2("(?<=(t.{7}|t.{5}|t.{3}))zz", "tczzazzbzz", 8, 10);
   n("(?<=(t.{7}|t.{5}|t.{3}))zz", "tczzazzbczz");
-  x2("(.{1,4})(.{1,4})(?<=\\2\\1)", "abaaba", 0, 6);
-  x2("(.{1,4})(.{1,4})(?<=\\2\\1)", "ababab", 0, 6);
+  x2("(.{1,4})(.{1,4})(?<=\\2\\1)", "abaaba", 2, 4);
+  x2("(.{1,4})(.{1,4})(?<=\\2\\1)", "ababab", 2, 6);
   n("(.{1,4})(.{1,4})(?<=\\2\\1)", "abcdabce");
   x2("(.{1,4})(.{1,4})(?<=\\2\\1)", "abcdabceabce", 4, 12);
   x2("(?<=a)", "a", 1, 1);
@@ -1269,8 +1274,8 @@ extern int main(int argc, char* argv[])
   x2("(?<=D|)(?<=@!nnnnnnnnnIIIIn;{1}D?()|<x@x*xxxD|)(?<=@xxx|xxxxx\\g<1>;{1}x)", "(?<=D|)(?<=@!nnnnnnnnnIIIIn;{1}D?()|<x@x*xxxD|)(?<=@xxx|xxxxx\\g<1>;{1}x)", 55, 55); // #173
   x2("(?<=;()|)\\g<1>", "", 0, 0); // reduced #173
   x2("(?<=;()|)\\k<1>", ";", 1, 1);
-  x2("(())\\g<3>{0}(?<=|())", "abc", 0, 0); // #175
-  x2("(?<=()|)\\1{0}", "abc", 0, 0);
+  x2("(())\\g<3>{0}(?<=|())", "abc", 3, 3); // #175
+  x2("(?<=()|)\\1{0}", "abc", 3, 3);
   e("(?<!xxxxxxxxxxxxxxxxxxxxxxx{32774}{65521}xxxxxxxx{65521}xxxxxxxxxxxxxx{32774}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx)", "", ONIGERR_INVALID_LOOK_BEHIND_PATTERN); // #177
   x2("(?<=(?<=abc))def", "abcdef", 3, 6);
   x2("(?<=ab(?<=.+b)c)def", "abcdef", 3, 6);
@@ -1290,17 +1295,17 @@ extern int main(int argc, char* argv[])
   x2("(?<!a.*z|a)def", "axxxxxxxzdefxxdef", 14, 17);
   x2("(?<!a.*z|a)def", "bxxxxxxxadefxxdef", 14, 17);
   x2("(?<!a.*z|a)def", "bxxxxxxxzdef", 9, 12);
-  x2("(?<!x+|y+)\\d+", "xxx572", 4, 6);
+  x2("(?<!x+|y+)\\d+", "xxx572", 5, 6);
   x2("(?<!3+|4+)\\d+", "33334444", 0, 8);
   n(".(?<!3+|4+)\\d+", "33334444");
   n("(.{,3})..(?<!\\1)", "aaaaa");
-  x2("(.{,3})..(?<!\\1)", "abcde", 0, 5);
-  x2("(.{,3})...(?<!\\1)", "abcde", 0, 5);
+  x2("(.{,3})..(?<!\\1)", "abcde", 2, 5);
+  x2("(.{,3})...(?<!\\1)", "abcde", 1, 5);
   x2("(a.c)(.{3,}?)(?<!\\1)", "abcabcd", 0, 7);
-  x2("(a*)(.{3,}?)(?<!\\1)", "abcabcd", 0, 5);
+  x2("(a*)(.{3,}?)(?<!\\1)", "abcabcd", 3, 7);
   x2("(?:(a.*b)|c.*d)(?<!(?(1))azzzb)", "azzzzb", 0, 6);
   n("(?:(a.*b)|c.*d)(?<!(?(1))azzzb)", "azzzb");
-  x2("<(?<!NT{+}abcd)", "<(?<!NT{+}abcd)", 0, 1);
+  x2("<(?<!NT{+}abcd)", "<(?<!NT{+}abcd)", 3, 4);
   x2("(?<!a.*c)def", "abbbbdef", 5, 8);
   n("(?<!a.*c)def", "abbbcdef");
   x2("(?<!a.*X\\b)def", "abbbbbXdef", 7, 10);
@@ -1317,9 +1322,9 @@ extern int main(int argc, char* argv[])
   n("(?<!^(?:v|t|a+.*[efg]))z", "abcdfz");
   x2("(?<!v|^t|^a+.*[efg])z", "uabcdfz", 6, 7);
 
-  x2("((?(a)\\g<1>|b))", "aab", 0, 3);
-  x2("((?(a)\\g<1>))", "aab", 0, 2);
-  x2("(b(?(a)|\\g<1>))", "bba", 0, 3);
+  x2("((?(a)\\g<1>|b))", "aab", 2, 3);
+  x2("((?(a)\\g<1>))", "aab", 1, 2);
+  x2("(b(?(a)|\\g<1>))", "bba", 1, 3);
   e("(()(?(2)\\g<1>))", "", ONIGERR_NEVER_ENDING_RECURSION);
   x2("(?(a)(?:b|c))", "ac", 0, 2);
   n("^(?(a)b|c)", "ac");
@@ -1353,21 +1358,21 @@ extern int main(int argc, char* argv[])
   x2("(?i)BstZ", "b\xC5\xBFtz", 0, 5); // U+017F
   x2("(?i)BstZ", "b\xEF\xAC\x85z", 0, 5); // U+FB05
   x2("(?i)BstZ", "b\xEF\xAC\x86z", 0, 5); // U+FB06
-  x2("(?i).*st\\z", "tttssss\xC5\xBFt", 0, 10); // U+017F
-  x2("(?i).*st\\z", "tttssss\xEF\xAC\x85", 0, 10); // U+FB05
-  x2("(?i).*st\\z", "tttssss\xEF\xAC\x86", 0, 10); // U+FB06
-  x2("(?i).*あstい\\z", "tttssssあ\xC5\xBFtい", 0, 16); // U+017F
-  x2("(?i).*あstい\\z", "tttssssあ\xEF\xAC\x85い", 0, 16); // U+FB05
-  x2("(?i).*あstい\\z", "tttssssあ\xEF\xAC\x86い", 0, 16); // U+FB06
-  x2("(?i).*\xC5\xBFt\\z", "tttssssst", 0, 9); // U+017F
-  x2("(?i).*\xEF\xAC\x85\\z", "tttssssあst", 0, 12); // U+FB05
-  x2("(?i).*\xEF\xAC\x86い\\z", "tttssssstい", 0, 12); // U+FB06
-  x2("(?i).*\xEF\xAC\x85\\z", "tttssssあ\xEF\xAC\x85", 0, 13);
+  x2("(?i).*st\\z", "tttssss\xC5\xBFt", 7, 10); // U+017F
+  x2("(?i).*st\\z", "tttssss\xEF\xAC\x85", 7, 10); // U+FB05
+  x2("(?i).*st\\z", "tttssss\xEF\xAC\x86", 7, 10); // U+FB06
+  x2("(?i).*あstい\\z", "tttssssあ\xC5\xBFtい", 7, 16); // U+017F
+  x2("(?i).*あstい\\z", "tttssssあ\xEF\xAC\x85い", 7, 16); // U+FB05
+  x2("(?i).*あstい\\z", "tttssssあ\xEF\xAC\x86い", 7, 16); // U+FB06
+  x2("(?i).*\xC5\xBFt\\z", "tttssssst", 7, 9); // U+017F
+  x2("(?i).*\xEF\xAC\x85\\z", "tttssssあst", 10, 12); // U+FB05
+  x2("(?i).*\xEF\xAC\x86い\\z", "tttssssstい", 7, 12); // U+FB06
+  x2("(?i).*\xEF\xAC\x85\\z", "tttssssあ\xEF\xAC\x85", 10, 13);
 
-  x2("(?i).*ss", "abcdefghijklmnopqrstuvwxyz\xc3\x9f", 0, 28); // U+00DF
-  x2("(?i).*ss.*", "abcdefghijklmnopqrstuvwxyz\xc3\x9fxyz", 0, 31); // U+00DF
-  x2("(?i).*\xc3\x9f", "abcdefghijklmnopqrstuvwxyzss", 0, 28); // U+00DF
-  x2("(?i).*ss.*", "abcdefghijklmnopqrstuvwxyzSSxyz", 0, 31);
+  x2("(?i).*ss", "abcdefghijklmnopqrstuvwxyz\xc3\x9f", 26, 28); // U+00DF
+  x2("(?i).*ss.*", "abcdefghijklmnopqrstuvwxyz\xc3\x9fxyz", 26, 31); // U+00DF
+  x2("(?i).*\xc3\x9f", "abcdefghijklmnopqrstuvwxyzss", 26, 28); // U+00DF
+  x2("(?i).*ss.*", "abcdefghijklmnopqrstuvwxyzSSxyz", 26, 31);
 
   x2("(?i)ssv", "\xc3\x9fv", 0, 3); // U+00DF
   x2("(?i)(?<=ss)v", "SSv", 2, 3);
@@ -1376,8 +1381,8 @@ extern int main(int argc, char* argv[])
   //x2("(?i)(?<=ss)v", "\xc3\x9fv", 2, 3);
 
   /* #156 U+01F0 (UTF-8: C7 B0) */
-  x2("(?i).+Isssǰ", ".+Isssǰ", 0, 8);
-  x2(".+Isssǰ", ".+Isssǰ", 0, 8);
+  x2("(?i).+Isssǰ", ".+Isssǰ", 1, 8);
+  x2(".+Isssǰ", ".+Isssǰ", 1, 8);
   x2("(?i)ǰ", "ǰ", 0, 2);
   x2("(?i)ǰ", "j\xcc\x8c", 0, 3);
   x2("(?i)j\xcc\x8c", "ǰ", 0, 2);
@@ -1398,64 +1403,11 @@ extern int main(int argc, char* argv[])
   x2("(?i)A\u2126=", "a\xcf\x89=", 0, 4);
   x2("(?i:ss)=1234567890", "\xc5\xbf\xc5\xbf=1234567890", 0, 15);
 
-  x2("\\x{000A}", "\x0a", 0, 1);
-  x2("\\x{000A 002f}", "\x0a\x2f", 0, 2);
-  x2("\\x{000A 002f }", "\x0a\x2f", 0, 2);
-  x2("\\x{007C     001b}", "\x7c\x1b", 0, 2);
-  x2("\\x{1 2 3 4 5 6 7 8 9 a b c d e f}", "\x01\x02\x3\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f", 0, 15);
-  x2("a\\x{000A 002f}@", "a\x0a\x2f@", 0, 4);
-  x2("a\\x{0060\n0063}@", "a\x60\x63@", 0, 4);
-  e("\\x{00000001 000000012}", "", ONIGERR_TOO_LONG_WIDE_CHAR_VALUE);
-  e("\\x{000A 00000002f}", "", ONIGERR_TOO_LONG_WIDE_CHAR_VALUE);
-  e("\\x{000A 002f/", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\x{000A 002f /", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\x{000A", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\x{000A ", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\x{000A 002f ", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  x2("\\o{102}", "B", 0, 1);
-  x2("\\o{102 103}", "BC", 0, 2);
-  x2("\\o{0160 0000161}", "pq", 0, 2);
-  x2("\\o{1 2 3 4 5 6 7 10 11 12 13 14 15 16 17}", "\x01\x02\x3\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f", 0, 15);
-  x2("\\o{0007 0010 }", "\x07\x08", 0, 2);
-  e("\\o{0000 0015/", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\o{0000 0015 /", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\o{0015", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\o{0015 ", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("\\o{0007 002f}", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  x2("[\\x{000A}]", "\x0a", 0, 1);
-  x2("[\\x{000A 002f}]+", "\x0a\x2f\x2e", 0, 2);
-  x2("[\\x{01 0F 1A 2c 4B}]+", "\x20\x01\x0f\x1a\x2c\x4b\x1b", 1, 6);
-  x2("[\\x{0020 0024}-\\x{0026}]+", "\x25\x24\x26\x23", 0, 3);
-  x2("[\\x{0030}-\\x{0033 005a}]+", "\x30\x31\x32\x33\x5a\34", 0, 5);
-  e("[\\x{000A]", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[\\x{000A ]", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[\\x{000A }]", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  x2("[\\o{102}]", "B", 0, 1);
-  x2("[\\o{102 103}]*", "BC", 0, 2);
-  e("[a\\o{002  003]bcde|zzz", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  x2("[\\x{0030-0039}]+", "abc0123456789def", 3, 13);
-  x2("[\\x{0030 - 0039 }]+", "abc0123456789def", 3, 13);
-  x2("[\\x{0030 - 0039 0063 0064}]+", "abc0123456789def", 2, 14);
-  x2("[\\x{0030 - 0039 0063-0065}]+", "acde019b", 1, 7);
-  e("[\\x{0030 - 0039-0063 0064}]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[\\x{0030 - }]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[\\x{0030 -- 0040}]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[\\x{0030--0040}]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[\\x{0030 - - 0040}]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[\\x{0030 0044 - }]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  e("[a-\\x{0070 - 0039}]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  x2("[a-\\x{0063 0071}]+", "dabcqz", 1, 5);
-  x2("[-\\x{0063-0065}]+", "ace-df", 1, 5);
-  x2("[\\x61-\\x{0063 0065}]+", "abced", 0, 4);
-  e("[\\x61-\\x{0063-0065}]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
-  x2("[t\\x{0063 0071}]+", "tcqb", 0, 3);
-  x2("[\\W\\x{0063 0071}]+", "*cqa", 0, 3);
-
   n("a(b|)+d", "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcd"); /* https://www.haijin-boys.com/discussions/5079 */
   n("   \xfd", ""); /* https://bugs.php.net/bug.php?id=77370 */
   /* can't use \xfc00.. because compiler error: hex escape sequence out of range */
   n("()0\\xfc00000\\xfc00000\\xfc00000\xfc", ""); /* https://bugs.php.net/bug.php?id=77371 */
-  x2("000||0\xfa", "0", 0, 0); /* https://bugs.php.net/bug.php?id=77381 */
+  x2("000||0\xfa", "0", 1, 1);
   e("(?i)000000000000000000000\xf0", "", ONIGERR_INVALID_CODE_POINT_VALUE); /* https://bugs.php.net/bug.php?id=77382 */
   n("0000\\\xf5", "0"); /* https://bugs.php.net/bug.php?id=77385 */
   n("(?i)FFF00000000000000000\xfd", ""); /* https://bugs.php.net/bug.php?id=77394 */
@@ -1477,7 +1429,7 @@ extern int main(int argc, char* argv[])
   e("(?i)*", "abc", ONIGERR_TARGET_OF_REPEAT_OPERATOR_NOT_SPECIFIED);
   e("(?:*)", "abc", ONIGERR_TARGET_OF_REPEAT_OPERATOR_NOT_SPECIFIED);
   e("(?m:*)", "abc", ONIGERR_TARGET_OF_REPEAT_OPERATOR_NOT_SPECIFIED);
-  x2("(?:)*", "abc", 0, 0);
+  x2("(?:)*", "abc", 3, 3);
   e("^*", "abc", ONIGERR_TARGET_OF_REPEAT_OPERATOR_INVALID);
 
   fprintf(stdout,

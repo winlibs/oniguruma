@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(onig, 6.9.4)
+AC_INIT(onig, 6.9.5)
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -19,14 +19,14 @@ AC_SUBST(STATISTICS)
 dnl check for POSIX API
 AC_ARG_ENABLE([posix-api],
   [AS_HELP_STRING([--enable-posix-api],
-    [turn on to include POSIX API [default=yes]])],
+    [turn on to include POSIX API [default=no]])],
 [\
 case "${enableval}" in
  yes) enable_posix_api=yes ;;
  no)  enable_posix_api=no ;;
  *)   AC_MSG_ERROR(bad value for --enable-posix-api) ;;
 esac],
-enable_posix_api=yes)
+enable_posix_api=no)
 AM_CONDITIONAL(ENABLE_POSIX_API, test x"${enable_posix_api}" = xyes)
 
 
@@ -57,6 +57,8 @@ AC_CHECK_HEADERS(sys/time.h unistd.h sys/times.h)
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_SIZEOF([int])
 AC_CHECK_SIZEOF([long])
+AC_CHECK_SIZEOF([long long])
+AC_CHECK_SIZEOF([void*])
 
 dnl Checks for library functions.
 AC_FUNC_ALLOCA
