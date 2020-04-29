@@ -545,6 +545,17 @@ extern int main(int argc, char* argv[])
   x2("(?<=a|bc||defghij|klmnopq|r)z", "rz", 1, 2);
   x3("(?<=(abc))d", "abcd", 0, 3, 1);
   x2("(?<=(?i:abc))d", "ABCd", 3, 4);
+  x2("(?<=^|b)c", " cbc", 3, 4);
+  x2("(?<=a|^|b)c", " cbc", 3, 4);
+  x2("(?<=a|(^)|b)c", " cbc", 3, 4);
+  x2("(?<=a|(^)|b)c", "cbc", 0, 1);
+  n("(Q)|(?<=a|(?(1))|b)c", "czc");
+  x2("(Q)(?<=a|(?(1))|b)c", "cQc", 1, 3);
+  x2("(?<=a|(?~END)|b)c", "ENDc", 3, 4);
+  n("(?<!^|b)c", "cbc");
+  n("(?<!a|^|b)c", "cbc");
+  n("(?<!a|(?:^)|b)c", "cbc");
+  x2("(?<!a|(?:^)|b)c", " cbc", 1, 2);
   x2("(a)\\g<1>", "aa", 0, 2);
   x2("(?<!a)b", "cb", 1, 2);
   n("(?<!a)b", "ab");
@@ -682,6 +693,13 @@ extern int main(int argc, char* argv[])
 
   x2("(?~)", "", 0, 0);
   x2("(?~)", "A", 0, 0);
+  x2("(?~ab)", "abc", 0, 0);
+  x2("(?~abc)", "abc", 0, 0);
+  x2("(?~abc|ab)", "abc", 0, 0);
+  x2("(?~ab|abc)", "abc", 0, 0);
+  x2("(?~a.c)", "abc", 0, 0);
+  x2("(?~a.c|ab)", "abc", 0, 0);
+  x2("(?~ab|a.c)", "abc", 0, 0);
   x2("aaaaa(?~)", "aaaaaaaaaa", 0, 5);
   x2("(?~(?:|aaa))", "aaa", 0, 0);
   x2("(?~aaa|)", "aaa", 0, 0);
@@ -1316,6 +1334,9 @@ extern int main(int argc, char* argv[])
   n("(?<!v|t|^a+.*[efg])z", "abcdfz");
   n("(?<!^(?:v|t|a+.*[efg]))z", "abcdfz");
   x2("(?<!v|^t|^a+.*[efg])z", "uabcdfz", 6, 7);
+  n("(\\k<2>)|(?<=(\\k<1>))", "");
+  x2("(a|\\k<2>)|(?<=(\\k<1>))", "a", 0, 1);
+  x2("(a|\\k<2>)|(?<=b(\\k<1>))", "ba", 1, 2);
 
   x2("((?(a)\\g<1>|b))", "aab", 0, 3);
   x2("((?(a)\\g<1>))", "aab", 0, 2);
@@ -1459,6 +1480,8 @@ extern int main(int argc, char* argv[])
   e("(?i)000000000000000000000\xf0", "", ONIGERR_INVALID_CODE_POINT_VALUE); /* https://bugs.php.net/bug.php?id=77382 */
   n("0000\\\xf5", "0"); /* https://bugs.php.net/bug.php?id=77385 */
   n("(?i)FFF00000000000000000\xfd", ""); /* https://bugs.php.net/bug.php?id=77394 */
+  n("(?x)\n  (?<!\\+\\+|--)(?<=[({\\[,?=>:*]|&&|\\|\\||\\?|\\*\\/|^await|[^\\._$[:alnum:]]await|^return|[^\\._$[:alnum:]]return|^default|[^\\._$[:alnum:]]default|^yield|[^\\._$[:alnum:]]yield|^)\\s*\n  (?!<\\s*[_$[:alpha:]][_$[:alnum:]]*((\\s+extends\\s+[^=>])|,)) # look ahead is not type parameter of arrow\n  (?=(<)\\s*(?:([_$[:alpha:]][-_$[:alnum:].]*)(?<!\\.|-)(:))?((?:[a-z][a-z0-9]*|([_$[:alpha:]][-_$[:alnum:].]*))(?<!\\.|-))(?=((<\\s*)|(\\s+))(?!\\?)|\\/?>))", "    while (i < len && f(array[i]))"); /* Issue #192 */
+
   e("x{55380}{77590}", "", ONIGERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);
   e("(xyz){40000}{99999}(?<name>vv)", "", ONIGERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);
   e("f{90000,90000}{80000,80000}", "", ONIGERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);

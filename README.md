@@ -27,6 +27,12 @@ Supported character encodings:
 * doc/SYNTAX.md: contributed by seanofw
 
 
+Version 6.9.5 revised 1
+-----------------------
+
+* Fixed Issue #192
+
+
 Version 6.9.5
 -------------
 
@@ -141,45 +147,6 @@ Version 6.5.0
 * NEW: Absent repeater (?~absent)  \[is equal to (?\~\|(?:absent)|\O*)]
 * NEW: Absent expression   (?~|absent|expr)  (*original)
 * NEW: Absent stopper (?~|absent)     (*original)
-
-
-Version 6.4.0
--------------
-
-* Fix fatal problem of endless repeat on Windows
-* NEW: call zero (call the total regexp) \g<0>
-* NEW: relative backref/call by positive number \k<+n>, \g<+n>
-
-
-Version 6.3.0
--------------
-
-* NEW: octal codepoint \o{.....}
-* Fixed CVE-2017-9224
-* Fixed CVE-2017-9225
-* Fixed CVE-2017-9226
-* Fixed CVE-2017-9227
-* Fixed CVE-2017-9228
-* Fixed CVE-2017-9229
-
-
-Version 6.1.2
--------------
-
-* allow word bound, word begin and word end in look-behind.
-* NEW option: ONIG_OPTION_CHECK_VALIDITY_OF_STRING
-
-Version 6.1
------------
-
-* improved doc/RE
-* NEW API: onig_scan()
-
-Version 6.0
------------
-
-* Update Unicode 8.0 Property/Case-folding
-* NEW API: onig_unicode_define_user_property()
 
 
 License
