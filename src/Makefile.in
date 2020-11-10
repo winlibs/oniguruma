@@ -90,6 +90,9 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @ENABLE_POSIX_API_TRUE@am__append_1 = $(posix_headers)
+@ENABLE_POSIX_API_TRUE@am__append_2 = -DUSE_POSIX_API
+@ENABLE_BINARY_COMPATIBLE_POSIX_API_TRUE@am__append_3 = -DUSE_BINARY_COMPATIBLE_POSIX_API
+@USE_LIBONIG_DEF_FILE_TRUE@am__append_4 = -Wl,--output-def,$(LIBONIG_DEF_FILE)
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -254,6 +257,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+EXTRA_LIBONIG_LDFLAGS = @EXTRA_LIBONIG_LDFLAGS@
 FGREP = @FGREP@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -264,6 +268,7 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBONIG_DEF_FILE = @LIBONIG_DEF_FILE@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
@@ -348,7 +353,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 libname = libonig.la
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall $(am__append_2) $(am__append_3)
 AM_CPPFLAGS = -I$(top_srcdir)
 include_HEADERS = oniguruma.h oniggnu.h $(am__append_1)
 posix_headers = onigposix.h
@@ -382,12 +387,13 @@ libonig_la_SOURCES = regint.h regparse.h regenc.h st.h \
 	gb18030.c koi8_r.c cp1251.c \
 	onig_init.c
 
-libonig_la_LDFLAGS = -version-info $(LTVERSION)
 EXTRA_DIST = koi8.c mktable.c \
 	unicode_fold_data.c unicode_property_data.c \
 	unicode_property_data_posix.c \
 	unicode_egcb_data.c unicode_wb_data.c
 
+libonig_la_LDFLAGS = $(EXTRA_LIBONIG_LDFLAGS) -version-info \
+	$(LTVERSION) $(am__append_4)
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -700,6 +706,8 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+@USE_LIBONIG_DEF_FILE_FALSE@install-data-hook:
+@USE_LIBONIG_DEF_FILE_FALSE@uninstall-hook:
 clean: clean-am
 
 clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
@@ -724,7 +732,8 @@ info: info-am
 info-am:
 
 install-data-am: install-includeHEADERS
-
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
 install-dvi: install-dvi-am
 
 install-dvi-am:
@@ -770,27 +779,36 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-includeHEADERS uninstall-libLTLIBRARIES
-
-.MAKE: all install-am install-strip
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) uninstall-hook
+.MAKE: all install-am install-data-am install-strip uninstall-am
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-am clean clean-generic \
 	clean-libLTLIBRARIES clean-libtool cscopelist-am ctags \
 	ctags-am distclean distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags distdir dvi \
 	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-includeHEADERS install-info install-info-am \
-	install-libLTLIBRARIES install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+	install-data install-data-am install-data-hook install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-includeHEADERS install-info \
+	install-info-am install-libLTLIBRARIES install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am uninstall-includeHEADERS \
-	uninstall-libLTLIBRARIES
+	tags tags-am uninstall uninstall-am uninstall-hook \
+	uninstall-includeHEADERS uninstall-libLTLIBRARIES
 
 .PRECIOUS: Makefile
 
+
+@USE_LIBONIG_DEF_FILE_TRUE@install-data-hook:
+@USE_LIBONIG_DEF_FILE_TRUE@	echo "$(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_DATA) $(LIBONIG_DEF_FILE) $(DESTDIR)$(libdir)"; \
+@USE_LIBONIG_DEF_FILE_TRUE@	$(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=install $(INSTALL_DATA) $(LIBONIG_DEF_FILE) $(DESTDIR)$(libdir) || exit 1
+
+@USE_LIBONIG_DEF_FILE_TRUE@uninstall-hook:
+@USE_LIBONIG_DEF_FILE_TRUE@	echo " $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f '$(DESTDIR)$(libdir)/$(LIBONIG_DEF_FILE)'"; \
+@USE_LIBONIG_DEF_FILE_TRUE@	$(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=uninstall rm -f "$(DESTDIR)$(libdir)/$(LIBONIG_DEF_FILE)"
 
 dll:
 	$(CXX) -shared -Wl,--output-def,libonig.def -o libonig.dll *.o \

@@ -258,6 +258,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+EXTRA_LIBONIG_LDFLAGS = @EXTRA_LIBONIG_LDFLAGS@
 FGREP = @FGREP@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -268,6 +269,7 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBONIG_DEF_FILE = @LIBONIG_DEF_FILE@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
@@ -935,6 +937,11 @@ sanitize:
 	./configure CFLAGS="-O -g -fsanitize=address" LDFLAGS="-fsanitize=address"
 	make
 	make all-test
+
+debug_out_sanitize:
+	make clean
+	./configure CFLAGS="-O0 -g -fsanitize=address -DONIG_DEBUG_PARSE -DONIG_DEBUG_COMPILE" LDFLAGS="-fsanitize=address"
+	make
 
 cov:
 	make lcov-clear

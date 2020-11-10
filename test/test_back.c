@@ -18,6 +18,10 @@ static int nsucc  = 0;
 static int nfail  = 0;
 static int nerror = 0;
 
+#ifdef __TRUSTINSOFT_ANALYZER__
+static int nall = 0;
+#endif
+
 static FILE* err_file;
 
 static OnigRegion* region;
@@ -25,6 +29,10 @@ static OnigRegion* region;
 static void xx(char* pattern, char* str, int from, int to, int mem, int not,
                int error_no, int line_no)
 {
+#ifdef __TRUSTINSOFT_ANALYZER__
+  if (nall++ % TIS_TEST_CHOOSE_MAX != TIS_TEST_CHOOSE_CURRENT) return;
+#endif
+
   int r;
   regex_t* reg;
   OnigErrorInfo einfo;
@@ -1419,7 +1427,7 @@ extern int main(int argc, char* argv[])
   x2("\\p{Common}", "\xe3\x8b\xbf", 0, 3);   /* U+32FF */
   x2("\\p{In_Enclosed_CJK_Letters_and_Months}", "\xe3\x8b\xbf", 0, 3); /* U+32FF */
 
-  e("\\x{7fffffff}", "", ONIGERR_TOO_BIG_WIDE_CHAR_VALUE);
+  e("\\x{7fffffff}", "", ONIGERR_INVALID_CODE_POINT_VALUE);
   e("[\\x{7fffffff}]", "", ONIGERR_INVALID_CODE_POINT_VALUE);
   e("\\u040", "@", ONIGERR_INVALID_CODE_POINT_VALUE);
   e("(?<abc>\\g<abc>)", "zzzz", ONIGERR_NEVER_ENDING_RECURSION);

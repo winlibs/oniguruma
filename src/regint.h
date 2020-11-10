@@ -34,6 +34,7 @@
 /* #define ONIG_DEBUG_COMPILE */
 /* #define ONIG_DEBUG_SEARCH */
 /* #define ONIG_DEBUG_MATCH */
+/* #define ONIG_DEBUG_MATCH_COUNTER */
 /* #define ONIG_DONT_OPTIMIZE */
 
 /* for byte-code statistical data. */
@@ -41,7 +42,7 @@
 
 #if defined(ONIG_DEBUG_PARSE) || defined(ONIG_DEBUG_MATCH) || \
     defined(ONIG_DEBUG_SEARCH) || defined(ONIG_DEBUG_COMPILE) || \
-    defined(ONIG_DEBUG_STATISTICS)
+    defined(ONIG_DEBUG_MATCH_COUNTER) || defined(ONIG_DEBUG_STATISTICS)
 #ifndef ONIG_DEBUG
 #define ONIG_DEBUG
 #define DBGFP   stderr
@@ -70,23 +71,29 @@
 #endif
 
 /* internal config */
+#define USE_CHECK_VALIDITY_OF_STRING_IN_TREE
 #define USE_OP_PUSH_OR_JUMP_EXACT
 #define USE_QUANT_PEEK_NEXT
 #define USE_ST_LIBRARY
 #define USE_TIMEOFDAY
+#define USE_STRICT_POINTER_ADDRESS
+#define USE_STRICT_POINTER_COMPARISON
 
 #define USE_WORD_BEGIN_END   /* "\<", "\>" */
 #define USE_CAPTURE_HISTORY
 #define USE_VARIABLE_META_CHARS
-#define USE_POSIX_API_REGION_OPTION
 #define USE_FIND_LONGEST_SEARCH_ALL_OF_RANGE
 /* #define USE_REPEAT_AND_EMPTY_CHECK_LOCAL_VAR */
 
+/* enabled by configure --enable-posix-api=yes */
+/* #define USE_POSIX_API */
+
+#define DEFAULT_PARSE_DEPTH_LIMIT           4096
 #define INIT_MATCH_STACK_SIZE                160
 #define DEFAULT_MATCH_STACK_LIMIT_SIZE         0 /* unlimited */
 #define DEFAULT_RETRY_LIMIT_IN_MATCH    10000000
 #define DEFAULT_RETRY_LIMIT_IN_SEARCH          0 /* unlimited */
-#define DEFAULT_PARSE_DEPTH_LIMIT           4096
+#define DEFAULT_SUBEXP_CALL_LIMIT_IN_SEARCH    0 /* unlimited */
 #define DEFAULT_SUBEXP_CALL_MAX_NEST_LEVEL    20
 
 
@@ -181,6 +188,12 @@
 #define CHECK_NULL_RETURN_MEMERR(p)   if (IS_NULL(p)) return ONIGERR_MEMORY
 #define NULL_UCHARP                   ((UChar* )0)
 
+#ifdef USE_STRICT_POINTER_COMPARISON
+#define PTR_GE(p,q)   ((p) != NULL && (p) >= (q))
+#else
+#define PTR_GE(p,q)   (p) >= (q)
+#endif
+
 #ifndef ONIG_INT_MAX
 #define ONIG_INT_MAX    INT_MAX
 #endif
@@ -255,11 +268,22 @@
 
 
 #ifdef _WIN32
-#if defined(_MSC_VER) && (_MSC_VER < 1300)
+#ifdef _MSC_VER
+
+#if _MSC_VER < 1300
 typedef int           intptr_t;
 typedef unsigned int  uintptr_t;
 #endif
+
+#if _MSC_VER < 1600
+typedef __int32 int32_t;
+typedef unsigned __int32 uint32_t;
+typedef __int64 int64_t;
+typedef unsigned __int64 uint64_t;
 #endif
+
+#endif
+#endif /* _WIN32 */
 
 #if SIZEOF_VOIDP == SIZEOF_LONG
 typedef unsigned long hash_data_type;
@@ -378,6 +402,9 @@ typedef unsigned int  MemStatusType;
 #define OPTON_POSIX_REGION(option)   ((option) & ONIG_OPTION_POSIX_REGION)
 #define OPTON_CHECK_VALIDITY_OF_STRING(option)  ((option) & \
                                       ONIG_OPTION_CHECK_VALIDITY_OF_STRING)
+#define OPTON_NOT_BEGIN_STRING(option)    ((option) & ONIG_OPTION_NOT_BEGIN_STRING)
+#define OPTON_NOT_END_STRING(option)      ((option) & ONIG_OPTION_NOT_END_STRING)
+#define OPTON_NOT_BEGIN_POSITION(option)  ((option) & ONIG_OPTION_NOT_BEGIN_POSITION)
 
 #define DISABLE_CASE_FOLD_MULTI_CHAR(case_fold_flag) \
   ((case_fold_flag) & ~INTERNAL_ONIGENC_CASE_FOLD_MULTI_CHAR)
@@ -562,10 +589,14 @@ enum OpCode {
   OP_BACKREF_N_IC,
   OP_BACKREF_MULTI,
   OP_BACKREF_MULTI_IC,
+#ifdef USE_BACKREF_WITH_LEVEL
   OP_BACKREF_WITH_LEVEL,        /* \k<xxx+n>, \k<xxx-n> */
   OP_BACKREF_WITH_LEVEL_IC,     /* \k<xxx+n>, \k<xxx-n> */
+#endif
   OP_BACKREF_CHECK,             /* (?(n)), (?('name')) */
+#ifdef USE_BACKREF_WITH_LEVEL
   OP_BACKREF_CHECK_WITH_LEVEL,  /* (?(n-level)), (?('name-level')) */
+#endif
   OP_MEM_START,
   OP_MEM_START_PUSH,     /* push back-tracker to stack */
   OP_MEM_END_PUSH,       /* push back-tracker to stack */
@@ -891,6 +922,9 @@ typedef struct {
     } update_var;
     struct {
       AbsAddrType addr;
+#ifdef ONIG_DEBUG_MATCH_COUNTER
+      MemNumType called_mem;
+#endif
     } call;
 #ifdef USE_CALLOUT
     struct {

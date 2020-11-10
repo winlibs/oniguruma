@@ -36,9 +36,9 @@ extern "C" {
 #define ONIGURUMA
 #define ONIGURUMA_VERSION_MAJOR   6
 #define ONIGURUMA_VERSION_MINOR   9
-#define ONIGURUMA_VERSION_TEENY   5
+#define ONIGURUMA_VERSION_TEENY   6
 
-#define ONIGURUMA_VERSION_INT     60905
+#define ONIGURUMA_VERSION_INT     60906
 
 #ifndef P_
 #if defined(__STDC__) || defined(_WIN32)
@@ -395,8 +395,12 @@ typedef unsigned int        OnigOptionType;
 #define ONIG_OPTION_POSIX_IS_ASCII       (ONIG_OPTION_SPACE_IS_ASCII << 1)
 #define ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER  (ONIG_OPTION_POSIX_IS_ASCII << 1)
 #define ONIG_OPTION_TEXT_SEGMENT_WORD    (ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER << 1)
+/* options (search time) */
+#define ONIG_OPTION_NOT_BEGIN_STRING     (ONIG_OPTION_TEXT_SEGMENT_WORD << 1)
+#define ONIG_OPTION_NOT_END_STRING       (ONIG_OPTION_NOT_BEGIN_STRING << 1)
+#define ONIG_OPTION_NOT_BEGIN_POSITION   (ONIG_OPTION_NOT_END_STRING << 1)
 
-#define ONIG_OPTION_MAXBIT               ONIG_OPTION_TEXT_SEGMENT_WORD  /* limit */
+#define ONIG_OPTION_MAXBIT               ONIG_OPTION_NOT_BEGIN_POSITION
 
 #define ONIG_OPTION_ON(options,regopt)      ((options) |= (regopt))
 #define ONIG_OPTION_OFF(options,regopt)     ((options) &= ~(regopt))
@@ -561,6 +565,7 @@ ONIG_EXTERN OnigSyntaxType*   OnigDefaultSyntax;
 #define ONIGERR_PARSE_DEPTH_LIMIT_OVER                        -16
 #define ONIGERR_RETRY_LIMIT_IN_MATCH_OVER                     -17
 #define ONIGERR_RETRY_LIMIT_IN_SEARCH_OVER                    -18
+#define ONIGERR_SUBEXP_CALL_LIMIT_IN_SEARCH_OVER              -19
 #define ONIGERR_DEFAULT_ENCODING_IS_NOT_SETTED                -21
 #define ONIGERR_SPECIFIED_ENCODING_CANT_CONVERT_TO_WIDE_CHAR  -22
 #define ONIGERR_FAIL_TO_INITIALIZE                            -23
@@ -918,6 +923,10 @@ ONIG_EXTERN
 int onig_set_capture_num_limit P_((int num));
 ONIG_EXTERN
 int onig_set_parse_depth_limit P_((unsigned int depth));
+ONIG_EXTERN
+unsigned long onig_get_subexp_call_limit_in_search P_((void));
+ONIG_EXTERN
+int onig_set_subexp_call_limit_in_search P_((unsigned long n));
 ONIG_EXTERN
 int onig_get_subexp_call_max_nest_level P_((void));
 ONIG_EXTERN

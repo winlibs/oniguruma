@@ -1,4 +1,4 @@
-鬼車インターフェース Version 6.9.5   2020/03/25
+鬼車インターフェース Version 6.9.6   2020/07/12
 
 #include <oniguruma.h>
 
@@ -94,6 +94,8 @@
       ONIG_OPTION_TEXT_SEGMENT_EXTENDED_GRAPHEME_CLUSTER  拡張書記素房モード
       ONIG_OPTION_TEXT_SEGMENT_WORD                       単語モード
 
+      * ONIG_OPTION_FIND_LONGEST はonig_search()の後方探索では正しく動作しない
+
   5 enc:        文字エンコーディング
 
       ONIG_ENCODING_ASCII         ASCII
@@ -140,7 +142,6 @@
       ONIG_SYNTAX_JAVA              Java (Sun java.util.regex)
       ONIG_SYNTAX_PERL              Perl
       ONIG_SYNTAX_PERL_NG           Perl + 名前付き捕獲式集合
-      ONIG_SYNTAX_RUBY              Ruby
       ONIG_SYNTAX_ONIGURUMA         Oniguruma
       ONIG_SYNTAX_DEFAULT           default (== ONIG_SYNTAX_ONIGURUMA)
                                     onig_set_default_syntax()
@@ -329,9 +330,11 @@
   6 region: マッチ領域情報(region)  (NULLも許される)
   7 option: 検索時オプション
 
-    ONIG_OPTION_NOTBOL        文字列の先頭(str)を行頭と看做さない
-    ONIG_OPTION_NOTEOL        文字列の終端(end)を行末と看做さない
-    ONIG_OPTION_POSIX_REGION  region引数をPOSIX APIのregmatch_t[]にする
+    ONIG_OPTION_NOTBOL              strを行頭および文字列先頭と看做さない
+    ONIG_OPTION_NOTEOL              endを行末および文字列終端と看做さない
+    ONIG_OPTION_NOT_BEGIN_STRING    strを文字列の先頭と看做さない (\A 失敗)
+    ONIG_OPTION_NOT_END_STRING      end文字列終端と看做さない (\z, \Z 失敗)
+    ONIG_OPTION_NOT_BEGIN_POSITION  startを検索開始位置と看做さない (\G 失敗)
 
 
 # int onig_search_with_param(regex_t* reg, const UChar* str, const UChar* end,
@@ -363,9 +366,11 @@
   5 region: マッチ領域情報(region)  (NULLも許される)
   6 option: 検索時オプション
 
-    ONIG_OPTION_NOTBOL        文字列の先頭(str)を行頭と看做さない
-    ONIG_OPTION_NOTEOL        文字列の終端(end)を行末と看做さない
-    ONIG_OPTION_POSIX_REGION  region引数をPOSIX APIのregmatch_t[]にする
+    ONIG_OPTION_NOTBOL              strを行頭および文字列先頭と看做さない
+    ONIG_OPTION_NOTEOL              endを行末および文字列終端と看做さない
+    ONIG_OPTION_NOT_BEGIN_STRING    strを文字列の先頭と看做さない (\A 失敗)
+    ONIG_OPTION_NOT_END_STRING      end文字列終端と看做さない (\z, \Z 失敗)
+    ONIG_OPTION_NOT_BEGIN_POSITION  atを検索開始位置と看做さない (\G 失敗)
 
 
 # int onig_match_with_param(regex_t* reg, const UChar* str, const UChar* end,
@@ -498,8 +503,11 @@
     ONIG_REGSET_REGEX_LEAD      (最左位置でマッチした結果を返す)
     ONIG_REGSET_PRIORITY_TO_REGEX_ORDER (最初にマッチした正規表現の結果を返す)
   7 option: 検索時オプション
-    ONIG_OPTION_NOTBOL        文字列の先頭(str)を行頭と看做さない
-    ONIG_OPTION_NOTEOL        文字列の終端(end)を行末と看做さない
+    ONIG_OPTION_NOTBOL              strを行頭および文字列先頭と看做さない
+    ONIG_OPTION_NOTEOL              endを行末および文字列終端と看做さない
+    ONIG_OPTION_NOT_BEGIN_STRING    strを文字列の先頭と看做さない (\A 失敗)
+    ONIG_OPTION_NOT_END_STRING      end文字列終端と看做さない (\z, \Z 失敗)
+    ONIG_OPTION_NOT_BEGIN_POSITION  startを検索開始位置と看做さない (\G 失敗)
   8 rmatch_pos: マッチした位置を返すためのアドレス (match_address - str)
 
   * ONIG_REGSET_POSITION_LEADとONIG_REGSET_REGEX_LEADは同じ結果を返す。
@@ -528,8 +536,11 @@
     ONIG_REGSET_REGEX_LEAD      (最左位置でマッチした結果を返す)
     ONIG_REGSET_PRIORITY_TO_REGEX_ORDER (最初にマッチした正規表現の結果を返す)
   7 option: 検索時オプション
-    ONIG_OPTION_NOTBOL        文字列の先頭(str)を行頭と看做さない
-    ONIG_OPTION_NOTEOL        文字列の終端(end)を行末と看做さない
+    ONIG_OPTION_NOTBOL              strを行頭および文字列先頭と看做さない
+    ONIG_OPTION_NOTEOL              endを行末および文字列終端と看做さない
+    ONIG_OPTION_NOT_BEGIN_STRING    strを文字列の先頭と看做さない (\A 失敗)
+    ONIG_OPTION_NOT_END_STRING      end文字列終端と看做さない (\z, \Z 失敗)
+    ONIG_OPTION_NOT_BEGIN_POSITION  startを検索開始位置と看做さない (\G 失敗)
   8 mps:    OnigMatchParamオブジェクトの配列
   9 rmatch_pos: マッチした位置を返すためのアドレス (match_address - str)
 
@@ -911,6 +922,21 @@
   一回の検索でのリトライ数の制限値をセットする。
   0は無制限を意味する。
   (デフォルト: 0)
+
+  正常終了戻り値: ONIG_NORMAL
+
+
+# unsigned long onig_get_subexp_call_limit_in_search(void)
+
+  部分式呼出しの呼び出し回数の制限値を返す。
+  (デフォルト: 0:無制限)
+
+  正常終了戻り値: 制限値
+
+
+# int onig_set_subexp_call_limit_in_search(unsigned long n)
+
+  部分式呼出しの呼び出し回数の制限値を指定する。
 
   正常終了戻り値: ONIG_NORMAL
 

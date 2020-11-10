@@ -50,6 +50,7 @@ make_regset(int line_no, int n, char* pat[], OnigRegSet** rset, int error_no)
           nfail++;
         }
       }
+      onig_regset_free(set);
       return r;
     }
 
@@ -96,6 +97,7 @@ time_test(int repeat, int n, char* ps[], char* s, char* end, double* rt_set, dou
                            ONIG_REGSET_POSITION_LEAD, ONIG_OPTION_NONE, &match_pos);
     if (r < 0) {
       fprintf(stderr, "FAIL onig_regset_search(POSITION_LEAD): %d\n", r);
+      onig_regset_free(set);
       return r;
     }
   }
@@ -109,6 +111,7 @@ time_test(int repeat, int n, char* ps[], char* s, char* end, double* rt_set, dou
                            ONIG_REGSET_REGEX_LEAD, ONIG_OPTION_NONE, &match_pos);
     if (r < 0) {
       fprintf(stderr, "FAIL onig_regset_search(REGEX_LEAD): %d\n", r);
+      onig_regset_free(set);
       return r;
     }
   }
@@ -158,7 +161,10 @@ time_compare(int n, char* ps[], char* s, char* end)
   for (i = 0; i < n; i++) {
     fisher_yates_shuffle(n, ps, cps);
     r = time_test(repeat, n, cps, s, end, &t_set, &t_reg);
-    if (r != 0) return ;
+    if (r != 0) {
+      free(cps);
+      return ;
+    }
     total_set += t_set;
     total_reg += t_reg;
   }
@@ -231,6 +237,7 @@ xx(int line_no, int n, char* ps[], char* s, int from, int to, int mem, int not, 
       if (region == 0) {
         fprintf(stderr, "ERROR: %d: can't get region.\n", line_no);
         nerror++;
+        onig_regset_free(set);
         return ;
       }
 
@@ -285,7 +292,7 @@ n(int line_no, int n, char* ps[], char* s)
 static int
 get_all_content_of_file(char* path, char** rs, char** rend)
 {
-  size_t len;
+  ssize_t len;
   size_t n;
   char* line;
   FILE* fp;

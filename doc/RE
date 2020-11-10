@@ -1,4 +1,4 @@
-Oniguruma Regular Expressions Version 6.9.5    2020/04/09
+Oniguruma Regular Expressions Version 6.9.6    2020/07/31
 
 syntax: ONIG_SYNTAX_ONIGURUMA (default syntax)
 
@@ -366,7 +366,7 @@ syntax: ONIG_SYNTAX_ONIGURUMA (default syntax)
 
   (?~|absent)        Absent stopper (* original)
                      After passed this operator, string right range is limited
-                     at the point that does not include the string match whth
+                     at the point that does not include the string match with
                      <absent>.
 
   (?~|)              Range clear

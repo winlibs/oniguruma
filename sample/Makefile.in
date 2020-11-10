@@ -95,14 +95,14 @@ host_triplet = @host@
 @ENABLE_POSIX_API_FALSE@	user_property$(EXEEXT) \
 @ENABLE_POSIX_API_FALSE@	callout$(EXEEXT) echo$(EXEEXT) \
 @ENABLE_POSIX_API_FALSE@	count$(EXEEXT) bug_fix$(EXEEXT) \
-@ENABLE_POSIX_API_FALSE@	regset$(EXEEXT)
+@ENABLE_POSIX_API_FALSE@	regset$(EXEEXT) scan$(EXEEXT)
 @ENABLE_POSIX_API_TRUE@TESTS = encode$(EXEEXT) listcap$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	names$(EXEEXT) posix$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	simple$(EXEEXT) sql$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	syntax$(EXEEXT) user_property$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	callout$(EXEEXT) echo$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	count$(EXEEXT) bug_fix$(EXEEXT) \
-@ENABLE_POSIX_API_TRUE@	regset$(EXEEXT)
+@ENABLE_POSIX_API_TRUE@	regset$(EXEEXT) scan$(EXEEXT)
 check_PROGRAMS = $(am__EXEEXT_1)
 subdir = sample
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -120,14 +120,14 @@ CONFIG_CLEAN_VPATH_FILES =
 @ENABLE_POSIX_API_FALSE@	syntax$(EXEEXT) user_property$(EXEEXT) \
 @ENABLE_POSIX_API_FALSE@	callout$(EXEEXT) echo$(EXEEXT) \
 @ENABLE_POSIX_API_FALSE@	count$(EXEEXT) bug_fix$(EXEEXT) \
-@ENABLE_POSIX_API_FALSE@	regset$(EXEEXT)
+@ENABLE_POSIX_API_FALSE@	regset$(EXEEXT) scan$(EXEEXT)
 @ENABLE_POSIX_API_TRUE@am__EXEEXT_1 = encode$(EXEEXT) listcap$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	names$(EXEEXT) posix$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	simple$(EXEEXT) sql$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	syntax$(EXEEXT) user_property$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	callout$(EXEEXT) echo$(EXEEXT) \
 @ENABLE_POSIX_API_TRUE@	count$(EXEEXT) bug_fix$(EXEEXT) \
-@ENABLE_POSIX_API_TRUE@	regset$(EXEEXT)
+@ENABLE_POSIX_API_TRUE@	regset$(EXEEXT) scan$(EXEEXT)
 bug_fix_SOURCES = bug_fix.c
 bug_fix_OBJECTS = bug_fix.$(OBJEXT)
 bug_fix_LDADD = $(LDADD)
@@ -168,6 +168,10 @@ am_regset_OBJECTS = regset.$(OBJEXT)
 regset_OBJECTS = $(am_regset_OBJECTS)
 regset_LDADD = $(LDADD)
 regset_DEPENDENCIES = $(lib_onig)
+am_scan_OBJECTS = scan.$(OBJEXT)
+scan_OBJECTS = $(am_scan_OBJECTS)
+scan_LDADD = $(LDADD)
+scan_DEPENDENCIES = $(lib_onig)
 am_simple_OBJECTS = simple.$(OBJEXT)
 simple_OBJECTS = $(am_simple_OBJECTS)
 simple_LDADD = $(LDADD)
@@ -221,13 +225,13 @@ am__v_CCLD_1 =
 SOURCES = bug_fix.c $(callout_SOURCES) $(count_SOURCES) \
 	$(echo_SOURCES) $(encode_SOURCES) $(listcap_SOURCES) \
 	$(names_SOURCES) $(posix_SOURCES) $(regset_SOURCES) \
-	$(simple_SOURCES) $(sql_SOURCES) $(syntax_SOURCES) \
-	$(user_property_SOURCES)
+	$(scan_SOURCES) $(simple_SOURCES) $(sql_SOURCES) \
+	$(syntax_SOURCES) $(user_property_SOURCES)
 DIST_SOURCES = bug_fix.c $(callout_SOURCES) $(count_SOURCES) \
 	$(echo_SOURCES) $(encode_SOURCES) $(listcap_SOURCES) \
 	$(names_SOURCES) $(posix_SOURCES) $(regset_SOURCES) \
-	$(simple_SOURCES) $(sql_SOURCES) $(syntax_SOURCES) \
-	$(user_property_SOURCES)
+	$(scan_SOURCES) $(simple_SOURCES) $(sql_SOURCES) \
+	$(syntax_SOURCES) $(user_property_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -484,6 +488,7 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
+EXTRA_LIBONIG_LDFLAGS = @EXTRA_LIBONIG_LDFLAGS@
 FGREP = @FGREP@
 GREP = @GREP@
 INSTALL = @INSTALL@
@@ -494,6 +499,7 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
+LIBONIG_DEF_FILE = @LIBONIG_DEF_FILE@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
@@ -595,6 +601,7 @@ echo_SOURCES = echo.c
 count_SOURCES = count.c
 bug_fix = bug_fix.c
 regset_SOURCES = regset.c
+scan_SOURCES = scan.c
 sampledir = .
 all: all-am
 
@@ -675,6 +682,10 @@ regset$(EXEEXT): $(regset_OBJECTS) $(regset_DEPENDENCIES) $(EXTRA_regset_DEPENDE
 	@rm -f regset$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(regset_OBJECTS) $(regset_LDADD) $(LIBS)
 
+scan$(EXEEXT): $(scan_OBJECTS) $(scan_DEPENDENCIES) $(EXTRA_scan_DEPENDENCIES) 
+	@rm -f scan$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(scan_OBJECTS) $(scan_LDADD) $(LIBS)
+
 simple$(EXEEXT): $(simple_OBJECTS) $(simple_DEPENDENCIES) $(EXTRA_simple_DEPENDENCIES) 
 	@rm -f simple$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(simple_OBJECTS) $(simple_LDADD) $(LIBS)
@@ -706,6 +717,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/names.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/posix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/regset.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/scan.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simple.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sql.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syntax.Po@am__quote@
@@ -1015,6 +1027,13 @@ regset.log: regset$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+scan.log: scan$(EXEEXT)
+	@p='scan$(EXEEXT)'; \
+	b='scan'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 posix.log: posix$(EXEEXT)
 	@p='posix$(EXEEXT)'; \
 	b='posix'; \
@@ -1210,6 +1229,7 @@ test: $(TESTS)
 	$(sampledir)/count
 	$(sampledir)/bug_fix
 	$(sampledir)/regset
+	$(sampledir)/scan
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
