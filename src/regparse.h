@@ -4,7 +4,7 @@
   regparse.h -  Oniguruma (regular expression library)
 **********************************************************************/
 /*-
- * Copyright (c) 2002-2020  K.Kosako
+ * Copyright (c) 2002-2021  K.Kosako
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,6 +73,14 @@ enum BodyEmptyType {
   BODY_MAY_BE_EMPTY_REC = 3
 };
 
+/* bytes buffer */
+typedef struct _BBuf {
+  UChar* p;
+  unsigned int used;
+  unsigned int alloc;
+} BBuf;
+
+
 struct _Node;
 
 typedef struct {
@@ -110,6 +118,7 @@ typedef struct {
   struct _Node* head_exact;
   struct _Node* next_head_exact;
   int include_referred;  /* include called node. don't eliminate even if {0} */
+  MemStatusType empty_status_mem;
 } QuantNode;
 
 typedef struct {
@@ -340,6 +349,7 @@ typedef struct {
 #define NODE_ST_ABSENT_WITH_SIDE_EFFECTS (1<<24)  /* stopper or clear */
 #define NODE_ST_FIXED_CLEN_MIN_SURE (1<<25)
 #define NODE_ST_REFERENCED          (1<<26)
+#define NODE_ST_INPEEK              (1<<27)
 
 
 #define NODE_STATUS(node)           (((Node* )node)->u.base.status)
@@ -376,6 +386,7 @@ typedef struct {
 #define NODE_IS_ABSENT_WITH_SIDE_EFFECTS(node)  ((NODE_STATUS(node) & NODE_ST_ABSENT_WITH_SIDE_EFFECTS) != 0)
 #define NODE_IS_FIXED_CLEN_MIN_SURE(node)  ((NODE_STATUS(node) & NODE_ST_FIXED_CLEN_MIN_SURE) != 0)
 #define NODE_IS_REFERENCED(node)      ((NODE_STATUS(node) & NODE_ST_REFERENCED) != 0)
+#define NODE_IS_INPEEK(node)          ((NODE_STATUS(node) & NODE_ST_INPEEK) != 0)
 
 #define NODE_PARENT(node)         ((node)->u.base.parent)
 #define NODE_BODY(node)           ((node)->u.base.body)
@@ -384,8 +395,8 @@ typedef struct {
 #define NODE_CALL_BODY(node)      ((node)->body)
 #define NODE_ANCHOR_BODY(node)    ((node)->body)
 
-#define SCANENV_MEMENV_SIZE  8
-#define SCANENV_MEMENV(senv) \
+#define PARSEENV_MEMENV_SIZE  8
+#define PARSEENV_MEMENV(senv) \
  (IS_NOT_NULL((senv)->mem_env_dynamic) ? \
     (senv)->mem_env_dynamic : (senv)->mem_env_static)
 
@@ -424,7 +435,7 @@ typedef struct {
   int              num_mem;
   int              num_named;
   int              mem_alloc;
-  MemEnv           mem_env_static[SCANENV_MEMENV_SIZE];
+  MemEnv           mem_env_static[PARSEENV_MEMENV_SIZE];
   MemEnv*          mem_env_dynamic;
   int              backref_num;
   int              keep_num;
@@ -439,14 +450,14 @@ typedef struct {
 #ifdef ONIG_DEBUG_PARSE
   unsigned int     max_parse_depth;
 #endif
-} ScanEnv;
+} ParseEnv;
 
 
 extern int    onig_renumber_name_table P_((regex_t* reg, GroupNumMap* map));
 
 extern int    onig_strncmp P_((const UChar* s1, const UChar* s2, int n));
 extern void   onig_strcpy P_((UChar* dest, const UChar* src, const UChar* end));
-extern void   onig_scan_env_set_error_string P_((ScanEnv* env, int ecode, UChar* arg, UChar* arg_end));
+extern void   onig_scan_env_set_error_string P_((ParseEnv* env, int ecode, UChar* arg, UChar* arg_end));
 extern int    onig_reduce_nested_quantifier P_((Node* pnode));
 extern int    onig_node_copy(Node** rcopy, Node* from);
 extern int    onig_node_str_cat P_((Node* node, const UChar* s, const UChar* end));
@@ -460,7 +471,7 @@ extern Node*  onig_node_new_str P_((const UChar* s, const UChar* end));
 extern Node*  onig_node_new_list P_((Node* left, Node* right));
 extern Node*  onig_node_new_alt P_((Node* left, Node* right));
 extern int    onig_names_free P_((regex_t* reg));
-extern int    onig_parse_tree P_((Node** root, const UChar* pattern, const UChar* end, regex_t* reg, ScanEnv* env));
+extern int    onig_parse_tree P_((Node** root, const UChar* pattern, const UChar* end, regex_t* reg, ParseEnv* env));
 extern int    onig_free_shared_cclass_table P_((void));
 extern int    onig_is_code_in_cc P_((OnigEncoding enc, OnigCodePoint code, CClassNode* cc));
 extern int    onig_new_cclass_with_code_list(Node** rnode, OnigEncoding enc, int n, OnigCodePoint codes[]);

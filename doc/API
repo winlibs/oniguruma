@@ -1,4 +1,4 @@
-Oniguruma API  Version 6.9.6  2020/07/12
+Oniguruma API  Version 6.9.7  2021/03/03
 
 #include <oniguruma.h>
 
@@ -15,6 +15,10 @@ Oniguruma API  Version 6.9.6  2020/07/12
   1 use_encodings:         array of encodings used in application.
   2 num_encodings:         number of encodings.
 
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
+
 
 # int onig_error_code_to_str(UChar* err_buf, int err_code, ...)
 
@@ -22,7 +26,8 @@ Oniguruma API  Version 6.9.6  2020/07/12
   If this function is used for onig_new(),
   don't call this after the pattern argument of onig_new() is freed.
 
-  normal return: error message string length
+  return value
+  normal: error message string length
 
   arguments
   1 err_buf:              error message string buffer.
@@ -60,7 +65,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
   Create a regex object.
 
-  normal return: ONIG_NORMAL
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
   arguments
   1 reg:         return regex object's address.
@@ -75,14 +82,12 @@ Oniguruma API  Version 6.9.6  2020/07/12
       ONIG_OPTION_EXTEND             extended pattern form
       ONIG_OPTION_FIND_LONGEST       find longest match
       ONIG_OPTION_FIND_NOT_EMPTY     ignore empty match
-      ONIG_OPTION_NEGATE_SINGLELINE
-            clear ONIG_OPTION_SINGLELINE which is enabled on
-            ONIG_SYNTAX_POSIX_BASIC, ONIG_SYNTAX_POSIX_EXTENDED,
-            ONIG_SYNTAX_PERL, ONIG_SYNTAX_PERL_NG, ONIG_SYNTAX_JAVA
+      ONIG_OPTION_NEGATE_SINGLELINE  clear ONIG_OPTION_SINGLELINE which is enabled on ONIG_SYNTAX_POSIX_BASIC/POSIX_EXTENDED/PERL/PERL_NG/PYTHON/JAVA
 
       ONIG_OPTION_DONT_CAPTURE_GROUP only named group captured.
       ONIG_OPTION_CAPTURE_GROUP      named and no-named group captured.
 
+      ONIG_OPTION_IGNORECASE_IS_ASCII  Limit IGNORECASE((?i)) to a range of ASCII characters
       ONIG_OPTION_WORD_IS_ASCII      ASCII only word (\w, \p{Word}, [[:word:]])
                                      ASCII only word bound (\b)
       ONIG_OPTION_DIGIT_IS_ASCII     ASCII only digit (\d, \p{Digit}, [[:digit:]])
@@ -145,6 +150,7 @@ Oniguruma API  Version 6.9.6  2020/07/12
       ONIG_SYNTAX_JAVA              Java (Sun java.util.regex)
       ONIG_SYNTAX_PERL              Perl
       ONIG_SYNTAX_PERL_NG           Perl + named group
+      ONIG_SYNTAX_PYTHON            Python
       ONIG_SYNTAX_ONIGURUMA         Oniguruma
       ONIG_SYNTAX_DEFAULT           default (== ONIG_SYNTAX_ONIGURUMA)
                                    onig_set_default_syntax()
@@ -164,8 +170,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Create a regex object.
   reg object area is not allocated in this function.
 
-  normal return: ONIG_NORMAL
-
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
 
 # int onig_new_deluxe(regex_t** reg, const UChar* pattern, const UChar* pattern_end,
@@ -177,7 +184,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Create a regex object.
   This function is deluxe version of onig_new().
 
-  normal return: ONIG_NORMAL
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
   arguments
   1 reg:         return address of regex object.
@@ -319,9 +328,13 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Search string and return search result and matching region.
   Do not pass invalid byte string in the regex character encoding.
 
-  normal return: match position offset (i.e.  p - str >= 0)
-  not found:     ONIG_MISMATCH (< 0)
-  error:         error code    (< 0)
+  return value
+  normal:    match position offset (i.e.  p - str >= 0)
+  not found: ONIG_MISMATCH (< 0)
+  error:     error code    (< 0)
+
+    * If option ONIG_OPTION_CALLBACK_EACH_MATCH is used,
+      it will return ONIG_MISMATCH even if there is a match.
 
   arguments
   1 reg:    regex object
@@ -334,11 +347,24 @@ Oniguruma API  Version 6.9.6  2020/07/12
   6 region: address for return group match range info (NULL is allowed)
   7 option: search time option
 
-    ONIG_OPTION_NOTBOL        (str) isn't considered as begin of line and begin of string (* ONIG_OPTION_NOT_BEGIN_STRING)
-    ONIG_OPTION_NOTEOL        (end) isn't considered as end of line and end of string (* ONIG_OPTION_NOT_END_STRING)
-    ONIG_OPTION_NOT_BEGIN_STRING    (str) isn't considered as begin of string (* fail \A)
-    ONIG_OPTION_NOT_END_STRING      (end) isn't considered as end of string (* fail \z, \Z)
-    ONIG_OPTION_NOT_BEGIN_POSITION  (start) isn't considered as start position of search (* fail \G)
+    ONIG_OPTION_NOTBOL              Do not regard the beginning of the (str) as the beginning of the line and the beginning of the string
+    ONIG_OPTION_NOTEOL              Do not regard the (end) as the end of a line and the end of a string
+    ONIG_OPTION_NOT_BEGIN_STRING    Do not regard the beginning of the (str) as the beginning of a string  (* fail \A)
+    ONIG_OPTION_NOT_END_STRING      Do not regard the (end) as a string endpoint  (* fail \z, \Z)
+    ONIG_OPTION_NOT_BEGIN_POSITION  Do not regard the (start) as start position of search  (* fail \G)
+
+    ONIG_OPTION_CALLBACK_EACH_MATCH
+      Call back for all successful matches.
+      (including the case of the same matching start position)
+      The search does not stop when a match is found at a certain position.
+      The callback function to be called is set by
+      onig_set_callback_each_match().
+      The user_data in the argument passed to the callback function is
+      specified by onig_set_callout_user_data_of_match_param(mp, user_data).
+      Therefore, if you want to specify user_data,
+      use onig_search_with_param() instead of onig_search().
+      The user_data specified by onig_set_callout_user_data_of_match_param()
+      will be shared with callout.
 
 
 # int onig_search_with_param(regex_t* reg, const UChar* str, const UChar* end,
@@ -359,9 +385,13 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Match string and return result and matching region.
   Do not pass invalid byte string in the regex character encoding.
 
-  normal return: match length  (>= 0)
-  not match:     ONIG_MISMATCH (< 0)
-  error:         error code    (< 0)
+  return value
+  normal:    match length  (>= 0)
+  not match: ONIG_MISMATCH (< 0)
+  error:     error code    (< 0)
+
+    * If option ONIG_OPTION_CALLBACK_EACH_MATCH is used,
+      it will return ONIG_MISMATCH even if there is a match.
 
   arguments
   1 reg:    regex object
@@ -371,11 +401,12 @@ Oniguruma API  Version 6.9.6  2020/07/12
   5 region: address for return group match range info (NULL is allowed)
   6 option: search time option
 
-    ONIG_OPTION_NOTBOL        (str) isn't considered as begin of line and begin of string (* ONIG_OPTION_NOT_BEGIN_STRING)
-    ONIG_OPTION_NOTEOL        (end) isn't considered as end of line and end of string (* ONIG_OPTION_NOT_END_STRING)
-    ONIG_OPTION_NOT_BEGIN_STRING    (str) isn't considered as begin of string (* fail \A)
-    ONIG_OPTION_NOT_END_STRING      (end) isn't considered as end of string (* fail \z, \Z)
-    ONIG_OPTION_NOT_BEGIN_POSITION  (at) isn't considered as start position of search (* fail \G)
+    ONIG_OPTION_NOTBOL              Do not regard the beginning of the (str) as the beginning of the line and the beginning of the string
+    ONIG_OPTION_NOTEOL              Do not regard the (end) as the end of a line and the end of a string
+    ONIG_OPTION_NOT_BEGIN_STRING    Do not regard the beginning of the (str) as the beginning of a string  (* fail \A)
+    ONIG_OPTION_NOT_END_STRING      Do not regard the (end) as a string endpoint  (* fail \z, \Z)
+    ONIG_OPTION_NOT_BEGIN_POSITION  Do not regard the (start) as start position of search  (* fail \G)
+    ONIG_OPTION_CALLBACK_EACH_MATCH Call back for all successful matches.
 
 
 # int onig_match_with_param(regex_t* reg, const UChar* str, const UChar* end,
@@ -398,9 +429,10 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Scan string and callback with matching region.
   Do not pass invalid byte string in the regex character encoding.
 
-  normal return: number of matching times
-  error:         error code
-  interruption:  return value of callback function (!= 0)
+  return value
+  normal:       number of matching times
+  error:        error code
+  interruption: return value of callback function (!= 0)
 
   arguments
   1 reg:    regex object
@@ -423,7 +455,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   2 n:    number of regex in regs
   3 regs: array of regex
 
-  normal return: ONIG_NORMAL
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
 
 # int onig_regset_add(OnigRegSet* set, regex_t* reg)
@@ -436,7 +470,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   1 set: regset object
   2 reg: regex object
 
-  normal return: ONIG_NORMAL
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
 
 # int onig_regset_replace(OnigRegSet* set, int at, regex_t* reg)
@@ -449,7 +485,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   2 at:  index of regex (zero origin)
   3 reg: regex object
 
-  normal return: ONIG_NORMAL
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
 
 # void onig_regset_free(OnigRegSet* set)
@@ -492,9 +530,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Perform a search with regset.
 
   return value:
-    normal return: index of match regex (zero origin)
-    not found:     ONIG_MISMATCH (< 0)
-    error:         error code    (< 0)
+  normal:    index of match regex (zero origin)
+  not found: ONIG_MISMATCH (< 0)
+  error:     error code    (< 0)
 
   arguments
   1 set:    regset object
@@ -507,11 +545,11 @@ Oniguruma API  Version 6.9.6  2020/07/12
       ONIG_REGSET_REGEX_LEAD    (returns most left position)
       ONIG_REGSET_PRIORITY_TO_REGEX_ORDER (returns first match regex)
   7 option: search time option
-      ONIG_OPTION_NOTBOL        (str) isn't considered as begin of line and begin of string (* ONIG_OPTION_NOT_BEGIN_STRING)
-      ONIG_OPTION_NOTEOL        end (end) isn't considered as end of line and end of string (* ONIG_OPTION_NOT_END_STRING)
-      ONIG_OPTION_NOT_BEGIN_STRING    (str) isn't considered as begin of string (* fail \A)
-      ONIG_OPTION_NOT_END_STRING      (end) isn't considered as end of string (* fail \z, \Z)
-      ONIG_OPTION_NOT_BEGIN_POSITION  (start) isn't considered as start position of search (* fail \G)
+    ONIG_OPTION_NOTBOL             Do not regard the beginning of the (str) as the beginning of the line and the beginning of the string
+    ONIG_OPTION_NOTEOL             Do not regard the (end) as the end of a line and the end of a string
+    ONIG_OPTION_NOT_BEGIN_STRING   Do not regard the beginning of the (str) as the beginning of a string  (* fail \A)
+    ONIG_OPTION_NOT_END_STRING     Do not regard the (end) as a string endpoint  (* fail \z, \Z)
+    ONIG_OPTION_NOT_BEGIN_POSITION Do not regard the (start) as start position of search  (* fail \G)
 
   8 rmatch_pos: return address of match position (match_address - str)
 
@@ -525,9 +563,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Perform a search with regset and match-params.
 
   return value:
-    normal return: index of match regex (zero origin)
-    not found:     ONIG_MISMATCH (< 0)
-    error:         error code    (< 0)
+  normal:    index of match regex (zero origin)
+  not found: ONIG_MISMATCH (< 0)
+  error:     error code    (< 0)
 
   arguments
   1 set:    regset object
@@ -540,11 +578,11 @@ Oniguruma API  Version 6.9.6  2020/07/12
       ONIG_REGSET_REGEX_LEAD    (returns most left position)
       ONIG_REGSET_PRIORITY_TO_REGEX_ORDER (returns first match regex)
   7 option: search time option
-      ONIG_OPTION_NOTBOL        (str) isn't considered as begin of line and begin of string (* ONIG_OPTION_NOT_BEGIN_STRING)
-      ONIG_OPTION_NOTEOL        (end) isn't considered as end of line and end of string (* ONIG_OPTION_NOT_END_STRING)
-      ONIG_OPTION_NOT_BEGIN_STRING    (str) isn't considered as begin of string (* fail \A)
-      ONIG_OPTION_NOT_END_STRING      (end) isn't considered as end of string (* fail \z, \Z)
-      ONIG_OPTION_NOT_BEGIN_POSITION  (start) isn't considered as start position of search (* fail \G)
+    ONIG_OPTION_NOTBOL             Do not regard the beginning of the (str) as the beginning of the line and the beginning of the string
+    ONIG_OPTION_NOTEOL             Do not regard the (end) as the end of a line and the end of a string
+    ONIG_OPTION_NOT_BEGIN_STRING   Do not regard the beginning of the (str) as the beginning of a string  (* fail \A)
+    ONIG_OPTION_NOT_END_STRING     Do not regard the (end) as a string endpoint  (* fail \z, \Z)
+    ONIG_OPTION_NOT_BEGIN_POSITION Do not regard the (start) as start position of search  (* fail \G)
 
   8 mps:    array of match-params
   9 rmatch_pos: return address of match position (match_address - str)
@@ -585,7 +623,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
   Resize group range area of region.
 
-  normal return: ONIG_NORMAL
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
   arguments
   1 region: target region
@@ -598,8 +638,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   Return the group number list of the name.
   Named subexp is defined by (?<name>....).
 
-  normal return:  number of groups for the name.
-                  (ex. /(?<x>..)(?<x>..)/  ==>  2)
+  return value
+  normal: number of groups for the name.
+          (ex. /(?<x>..)(?<x>..)/  ==>  2)
   name not found: -1
 
   arguments
@@ -616,7 +657,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
   If two or more regions for the groups of the name are effective,
   the greatest number in it is obtained.
 
-  normal return: group number.
+  return value
+  normal: group number
+  error:  error code < 0
 
   arguments
   1 reg:      regex object.
@@ -631,8 +674,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
   Iterate function call for all names.
 
-  normal return: 0
-  error:         func's return value.
+  return value
+  normal: 0
+  error:  return value of callback function
 
   arguments
   1 reg:     regex object.
@@ -654,10 +698,18 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
 # OnigEncoding     onig_get_encoding(regex_t* reg)
 # OnigOptionType   onig_get_options(regex_t* reg)
-# OnigCaseFoldType onig_get_case_fold_flag(regex_t* reg)
 # OnigSyntaxType*  onig_get_syntax(regex_t* reg)
 
   Return a value of the regex object.
+
+  arguments
+  1 reg:     regex object.
+
+
+# OnigCaseFoldType onig_get_case_fold_flag(regex_t* reg)
+
+  Return the case_fold_flag of the regex object.
+  This function is deprecated.
 
   arguments
   1 reg:     regex object.
@@ -671,6 +723,23 @@ Oniguruma API  Version 6.9.6  2020/07/12
   1 reg:     regex object.
 
 
+# OnigCallbackEachMatchFunc onig_get_callback_each_match(void)
+
+  Return the current callback function for ONIG_OPTION_CALLBACK_EACH_MATCH.
+
+
+# int onig_set_callback_each_match(OnigCallbackEachMatchFunc func)
+
+  Set the callback function for ONIG_OPTION_CALLBACK_EACH_MATCH.
+  If NULL is set, the callback will never be executed.
+
+  return value
+  normal: 0
+
+  arguments
+  1 func: callback function
+
+
 # int onig_number_of_capture_histories(regex_t* reg)
 
   Return the number of capture history defined in the pattern.
@@ -680,7 +749,6 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
   arguments
   1 reg:     regex object.
-
 
 
 # OnigCaptureTreeNode* onig_get_capture_tree(OnigRegion* region)
@@ -698,8 +766,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
  Traverse and callback in capture history data tree.
 
-  normal return: 0
-  error:         callback func's return value.
+  return value
+  normal: 0
+  error:  return value of callback function
 
   arguments
   1 region:  match region data.
@@ -732,6 +801,7 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
   Return noname group capture activity.
 
+  return value
   active:   1
   inactive: 0
 
@@ -868,11 +938,13 @@ Oniguruma API  Version 6.9.6  2020/07/12
 # OnigCaseFoldType onig_get_default_case_fold_flag()
 
   Get default case fold flag.
+  This function is deprecated.
 
 
 # int onig_set_default_case_fold_flag(OnigCaseFoldType case_fold_flag)
 
   Set default case fold flag.
+  This function is deprecated.
 
   1 case_fold_flag: case fold flag
 
@@ -993,7 +1065,9 @@ Oniguruma API  Version 6.9.6  2020/07/12
 
     * Don't destroy the ranges after having called this function.
 
-  normal return: ONIG_NORMAL
+  return value
+  normal: ONIG_NORMAL == 0
+  error:  error code < 0
 
 
 # unsigned int onig_get_parse_depth_limit(void)

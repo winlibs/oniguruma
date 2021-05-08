@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(oniguruma
-  VERSION 6.9.6
+  VERSION 6.9.7
   LANGUAGES C)
 
 set(PACKAGE onig)
@@ -99,6 +99,12 @@ if(MSVC)
 	  $<$<CONFIG:MinSizeRel>:/MT>
 	  $<$<CONFIG:RelWithDebgInfo>:/MTd>
 	  )
+  endif()
+  if(MSVC_VERSION LESS_EQUAL "1800")
+    # <= VS2013
+    target_compile_definitions(onig PRIVATE
+      -Dinline=__inline
+      )
   endif()
 elseif(CMAKE_COMPILER_IS_GNUCC)
   target_compile_options(onig PRIVATE

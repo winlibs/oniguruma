@@ -1,8 +1,7 @@
 /*
  * test_utf8.c
- * Copyright (c) 2019-2020  K.Kosako
+ * Copyright (c) 2019-2021  K.Kosako
  */
-#include "config.h"
 #ifdef ONIG_ESCAPE_UCHAR_COLLISION
 #undef ONIG_ESCAPE_UCHAR_COLLISION
 #endif
@@ -27,7 +26,7 @@ static FILE* err_file;
 static OnigRegion* region;
 
 static void xx(char* pattern, char* str, int from, int to, int mem, int not,
-               int error_no)
+               int error_no, int line_no)
 {
 #ifdef __TRUSTINSOFT_ANALYZER__
   if (nall++ % TIS_TEST_CHOOSE_MAX != TIS_TEST_CHOOSE_CURRENT) return;
@@ -44,17 +43,17 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
 
     if (error_no == 0) {
       onig_error_code_to_str((UChar* )s, r, &einfo);
-      fprintf(err_file, "ERROR: %s  /%s/\n", s, pattern);
+      fprintf(err_file, "ERROR: %s  /%s/  #%d\n", s, pattern, line_no);
       nerror++;
     }
     else {
       if (r == error_no) {
-        fprintf(stdout, "OK(ERROR): /%s/ %d\n", pattern, r);
+        fprintf(stdout, "OK(ERROR): /%s/ %d  #%d\n", pattern, r, line_no);
         nsucc++;
       }
       else {
-        fprintf(stdout, "FAIL(ERROR): /%s/ '%s', %d, %d\n", pattern, str,
-                error_no, r);
+        fprintf(stdout, "FAIL(ERROR): /%s/ '%s', %d, %d  #%d\n", pattern, str,
+                error_no, r, line_no);
         nfail++;
       }
     }
@@ -70,17 +69,18 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
 
     if (error_no == 0) {
       onig_error_code_to_str((UChar* )s, r);
-      fprintf(err_file, "ERROR: %s  /%s/\n", s, pattern);
+      fprintf(err_file, "ERROR: %s  /%s/  #%d\n", s, pattern, line_no);
       nerror++;
     }
     else {
       if (r == error_no) {
-        fprintf(stdout, "OK(ERROR): /%s/ '%s', %d\n", pattern, str, r);
+        fprintf(stdout, "OK(ERROR): /%s/ '%s', %d  #%d\n",
+                pattern, str, r, line_no);
         nsucc++;
       }
       else {
-        fprintf(stdout, "FAIL ERROR NO: /%s/ '%s', %d, %d\n", pattern, str,
-                error_no, r);
+        fprintf(stdout, "FAIL ERROR NO: /%s/ '%s', %d, %d  #%d\n",
+                pattern, str, error_no, r, line_no);
         nfail++;
       }
     }
@@ -90,27 +90,27 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
 
   if (r == ONIG_MISMATCH) {
     if (not) {
-      fprintf(stdout, "OK(N): /%s/ '%s'\n", pattern, str);
+      fprintf(stdout, "OK(N): /%s/ '%s'  #%d\n", pattern, str, line_no);
       nsucc++;
     }
     else {
-      fprintf(stdout, "FAIL: /%s/ '%s'\n", pattern, str);
+      fprintf(stdout, "FAIL: /%s/ '%s'  #%d\n", pattern, str, line_no);
       nfail++;
     }
   }
   else {
     if (not) {
-      fprintf(stdout, "FAIL(N): /%s/ '%s'\n", pattern, str);
+      fprintf(stdout, "FAIL(N): /%s/ '%s'  #%d\n", pattern, str, line_no);
       nfail++;
     }
     else {
       if (region->beg[mem] == from && region->end[mem] == to) {
-        fprintf(stdout, "OK: /%s/ '%s'\n", pattern, str);
+        fprintf(stdout, "OK: /%s/ '%s'  #%d\n", pattern, str, line_no);
         nsucc++;
       }
       else {
-        fprintf(stdout, "FAIL: /%s/ '%s' %d-%d : %d-%d\n", pattern, str,
-                from, to, region->beg[mem], region->end[mem]);
+        fprintf(stdout, "FAIL: /%s/ '%s' %d-%d : %d-%d  #%d\n", pattern, str,
+                from, to, region->beg[mem], region->end[mem], line_no);
         nfail++;
       }
     }
@@ -118,25 +118,30 @@ static void xx(char* pattern, char* str, int from, int to, int mem, int not,
   onig_free(reg);
 }
 
-static void x2(char* pattern, char* str, int from, int to)
+static void xx2(char* pattern, char* str, int from, int to, int line_no)
 {
-  xx(pattern, str, from, to, 0, 0, 0);
+  xx(pattern, str, from, to, 0, 0, 0, line_no);
 }
 
-static void x3(char* pattern, char* str, int from, int to, int mem)
+static void xx3(char* pattern, char* str, int from, int to, int mem, int line_no)
 {
-  xx(pattern, str, from, to, mem, 0, 0);
+  xx(pattern, str, from, to, mem, 0, 0, line_no);
 }
 
-static void n(char* pattern, char* str)
+static void xn(char* pattern, char* str, int line_no)
 {
-  xx(pattern, str, 0, 0, 0, 1, 0);
+  xx(pattern, str, 0, 0, 0, 1, 0, line_no);
 }
 
-static void e(char* pattern, char* str, int error_no)
+static void xe(char* pattern, char* str, int error_no, int line_no)
 {
-  xx(pattern, str, 0, 0, 0, 0, error_no);
+  xx(pattern, str, 0, 0, 0, 0, error_no, line_no);
 }
+
+#define x2(p,s,f,t)    xx2(p,s,f,t, __LINE__)
+#define x3(p,s,f,t,m)  xx3(p,s,f,t,m, __LINE__)
+#define n(p,s)          xn(p,s,   __LINE__)
+#define e(p,s,en)       xe(p,s,en, __LINE__)
 
 extern int main(int argc, char* argv[])
 {
@@ -359,6 +364,114 @@ extern int main(int argc, char* argv[])
   x2("(.*)a\\1f", "bacbabf", 3, 7);
   x2("((.*)a\\2f)", "bacbabf", 3, 7);
   x2("(.*)a\\1f", "baczzzzzz\nbazz\nzzzzbabf", 19, 23);
+  x2("(?:x?)?", "", 0, 0);
+  x2("(?:x?)?", "x", 0, 1);
+  x2("(?:x?)?", "xx", 0, 1);
+  x2("(?:x?)*", "", 0, 0);
+  x2("(?:x?)*", "x", 0, 1);
+  x2("(?:x?)*", "xx", 0, 2);
+  x2("(?:x?)+", "", 0, 0);
+  x2("(?:x?)+", "x", 0, 1);
+  x2("(?:x?)+", "xx", 0, 2);
+  x2("(?:x?)\?\?", "", 0, 0);
+  x2("(?:x?)\?\?", "x", 0, 0);
+  x2("(?:x?)\?\?", "xx", 0, 0);
+  x2("(?:x?)*?", "", 0, 0);
+  x2("(?:x?)*?", "x", 0, 0);
+  x2("(?:x?)*?", "xx", 0, 0);
+  x2("(?:x?)+?", "", 0, 0);
+  x2("(?:x?)+?", "x", 0, 1);
+  x2("(?:x?)+?", "xx", 0, 1);
+  x2("(?:x*)?", "", 0, 0);
+  x2("(?:x*)?", "x", 0, 1);
+  x2("(?:x*)?", "xx", 0, 2);
+  x2("(?:x*)*", "", 0, 0);
+  x2("(?:x*)*", "x", 0, 1);
+  x2("(?:x*)*", "xx", 0, 2);
+  x2("(?:x*)+", "", 0, 0);
+  x2("(?:x*)+", "x", 0, 1);
+  x2("(?:x*)+", "xx", 0, 2);
+  x2("(?:x*)\?\?", "", 0, 0);
+  x2("(?:x*)\?\?", "x", 0, 0);
+  x2("(?:x*)\?\?", "xx", 0, 0);
+  x2("(?:x*)*?", "", 0, 0);
+  x2("(?:x*)*?", "x", 0, 0);
+  x2("(?:x*)*?", "xx", 0, 0);
+  x2("(?:x*)+?", "", 0, 0);
+  x2("(?:x*)+?", "x", 0, 1);
+  x2("(?:x*)+?", "xx", 0, 2);
+  x2("(?:x+)?", "", 0, 0);
+  x2("(?:x+)?", "x", 0, 1);
+  x2("(?:x+)?", "xx", 0, 2);
+  x2("(?:x+)*", "", 0, 0);
+  x2("(?:x+)*", "x", 0, 1);
+  x2("(?:x+)*", "xx", 0, 2);
+  n("(?:x+)+", "");
+  x2("(?:x+)+", "x", 0, 1);
+  x2("(?:x+)+", "xx", 0, 2);
+  x2("(?:x+)\?\?", "", 0, 0);
+  x2("(?:x+)\?\?", "x", 0, 0);
+  x2("(?:x+)\?\?", "xx", 0, 0);
+  x2("(?:x+)*?", "", 0, 0);
+  x2("(?:x+)*?", "x", 0, 0);
+  x2("(?:x+)*?", "xx", 0, 0);
+  n("(?:x+)+?", "");
+  x2("(?:x+)+?", "x", 0, 1);
+  x2("(?:x+)+?", "xx", 0, 2);
+  x2("(?:x\?\?)?", "", 0, 0);
+  x2("(?:x\?\?)?", "x", 0, 0);
+  x2("(?:x\?\?)?", "xx", 0, 0);
+  x2("(?:x\?\?)*", "", 0, 0);
+  x2("(?:x\?\?)*", "x", 0, 0);
+  x2("(?:x\?\?)*", "xx", 0, 0);
+  x2("(?:x\?\?)+", "", 0, 0);
+  x2("(?:x\?\?)+", "x", 0, 0);
+  x2("(?:x\?\?)+", "xx", 0, 0);
+  x2("(?:x\?\?)\?\?", "", 0, 0);
+  x2("(?:x\?\?)\?\?", "x", 0, 0);
+  x2("(?:x\?\?)\?\?", "xx", 0, 0);
+  x2("(?:x\?\?)*?", "", 0, 0);
+  x2("(?:x\?\?)*?", "x", 0, 0);
+  x2("(?:x\?\?)*?", "xx", 0, 0);
+  x2("(?:x\?\?)+?", "", 0, 0);
+  x2("(?:x\?\?)+?", "x", 0, 0);
+  x2("(?:x\?\?)+?", "xx", 0, 0);
+  x2("(?:x*?)?", "", 0, 0);
+  x2("(?:x*?)?", "x", 0, 0);
+  x2("(?:x*?)?", "xx", 0, 0);
+  x2("(?:x*?)*", "", 0, 0);
+  x2("(?:x*?)*", "x", 0, 0);
+  x2("(?:x*?)*", "xx", 0, 0);
+  x2("(?:x*?)+", "", 0, 0);
+  x2("(?:x*?)+", "x", 0, 0);
+  x2("(?:x*?)+", "xx", 0, 0);
+  x2("(?:x*?)\?\?", "", 0, 0);
+  x2("(?:x*?)\?\?", "x", 0, 0);
+  x2("(?:x*?)\?\?", "xx", 0, 0);
+  x2("(?:x*?)*?", "", 0, 0);
+  x2("(?:x*?)*?", "x", 0, 0);
+  x2("(?:x*?)*?", "xx", 0, 0);
+  x2("(?:x*?)+?", "", 0, 0);
+  x2("(?:x*?)+?", "x", 0, 0);
+  x2("(?:x*?)+?", "xx", 0, 0);
+  x2("(?:x+?)?", "", 0, 0);
+  x2("(?:x+?)?", "x", 0, 1);
+  x2("(?:x+?)?", "xx", 0, 1);
+  x2("(?:x+?)*", "", 0, 0);
+  x2("(?:x+?)*", "x", 0, 1);
+  x2("(?:x+?)*", "xx", 0, 2);
+  n("(?:x+?)+", "");
+  x2("(?:x+?)+", "x", 0, 1);
+  x2("(?:x+?)+", "xx", 0, 2);
+  x2("(?:x+?)\?\?", "", 0, 0);
+  x2("(?:x+?)\?\?", "x", 0, 0);
+  x2("(?:x+?)\?\?", "xx", 0, 0);
+  x2("(?:x+?)*?", "", 0, 0);
+  x2("(?:x+?)*?", "x", 0, 0);
+  x2("(?:x+?)*?", "xx", 0, 0);
+  n("(?:x+?)+?", "");
+  x2("(?:x+?)+?", "x", 0, 1);
+  x2("(?:x+?)+?", "xx", 0, 1);
   x2("a|b", "a", 0, 1);
   x2("a|b", "b", 0, 1);
   x2("|a", "a", 0, 0);
@@ -1348,9 +1461,12 @@ extern int main(int argc, char* argv[])
 
   x2("((?(a)\\g<1>|b))", "aab", 0, 3);
   x2("((?(a)\\g<1>))", "aab", 0, 2);
+  x2("((?(a)\\g<1>))", "", 0, 0);
   x2("(b(?(a)|\\g<1>))", "bba", 0, 3);
   e("(()(?(2)\\g<1>))", "", ONIGERR_NEVER_ENDING_RECURSION);
   x2("(?(a)(?:b|c))", "ac", 0, 2);
+  x2("(?(a)(?:b|c))", "", 0, 0);
+  x2("(?(a)b)", "", 0, 0);
   n("^(?(a)b|c)", "ac");
   x2("(?i)a|b", "B", 0, 1);
   n("((?i)a|b.)|c", "C");
@@ -1479,6 +1595,7 @@ extern int main(int argc, char* argv[])
   e("[\\x61-\\x{0063-0065}]+", "", ONIGERR_INVALID_CODE_POINT_VALUE);
   x2("[t\\x{0063 0071}]+", "tcqb", 0, 3);
   x2("[\\W\\x{0063 0071}]+", "*cqa", 0, 3);
+  x2("(\\O|(?=z\\g<2>*))(\\g<0>){0}", "a", 0, 1);
 
   n("a(b|)+d", "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcd"); /* https://www.haijin-boys.com/discussions/5079 */
   n("   \xfd", ""); /* https://bugs.php.net/bug.php?id=77370 */
@@ -1491,6 +1608,7 @@ extern int main(int argc, char* argv[])
   n("(?x)\n  (?<!\\+\\+|--)(?<=[({\\[,?=>:*]|&&|\\|\\||\\?|\\*\\/|^await|[^\\._$[:alnum:]]await|^return|[^\\._$[:alnum:]]return|^default|[^\\._$[:alnum:]]default|^yield|[^\\._$[:alnum:]]yield|^)\\s*\n  (?!<\\s*[_$[:alpha:]][_$[:alnum:]]*((\\s+extends\\s+[^=>])|,)) # look ahead is not type parameter of arrow\n  (?=(<)\\s*(?:([_$[:alpha:]][-_$[:alnum:].]*)(?<!\\.|-)(:))?((?:[a-z][a-z0-9]*|([_$[:alpha:]][-_$[:alnum:].]*))(?<!\\.|-))(?=((<\\s*)|(\\s+))(?!\\?)|\\/?>))", "    while (i < len && f(array[i]))"); /* Issue #192 */
 
   x2("aaaaaaaaaaaaaaaaaaaaaaaあb", "aaaaaaaaaaaaaaaaaaaaaaaあb", 0, 27); /* Issue #221 */
+  n("d{65538}+{61533} ", "d{65538}+{61533} ");
 
   e("x{55380}{77590}", "", ONIGERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);
   e("(xyz){40000}{99999}(?<name>vv)", "", ONIGERR_TOO_BIG_NUMBER_FOR_REPEAT_RANGE);

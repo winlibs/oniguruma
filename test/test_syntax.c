@@ -1,8 +1,7 @@
 /*
  * test_syntax.c
- * Copyright (c) 2019-2020  K.Kosako
+ * Copyright (c) 2019-2021  K.Kosako
  */
-#include "config.h"
 #ifdef ONIG_ESCAPE_UCHAR_COLLISION
 #undef ONIG_ESCAPE_UCHAR_COLLISION
 #endif
@@ -139,7 +138,7 @@ static void e(char* pattern, char* str, int error_no)
   xx(pattern, str, 0, 0, 0, 0, error_no);
 }
 
-static int test_fixed_interval()
+static int test_reluctant_interval()
 {
   x2("a{1,3}?", "aaa", 0, 1);
   x2("a{3}", "aaa", 0, 3);
@@ -148,6 +147,11 @@ static int test_fixed_interval()
   x2("a{3,3}?", "aaa", 0, 3);
   n("a{3,3}?", "aa");
 
+  return 0;
+}
+
+static int test_possessive_interval()
+{
   x2("a{1,3}+", "aaaaaa", 0, 3);
   x2("a{3}+", "aaaaaa", 0, 3);
   x2("a{3,3}+", "aaaaaa", 0, 3);
@@ -209,6 +213,52 @@ static int test_look_behind()
   return 0;
 }
 
+static int test_python_option_ascii()
+{
+  x2("(?a)\\w", "a", 0, 1);
+  x2("\\w", "あ", 0, 3);
+  n("(?a)\\w", "あ");
+  x2("\\s", "　", 0, 3);
+  n("(?a)\\s", "　");
+  x2("\\d", "５", 0, 3);
+  n("(?a)\\d", "５");
+  x2("あ\\b ", "あ ", 0, 4);
+  n("(?a)あ\\b ", "あ ");
+  n("あ\\B ", "あ ");
+  x2("(?a)あ\\B ", "あ ", 0, 4);
+  x2("(?a)\\W", "あ", 0, 3);
+  n("\\W", "あ");
+  x2("(?a)\\S", "　", 0, 3);
+  n("\\S", "　");
+  x2("(?a)\\D", "５", 0, 3);
+  n("\\D", "５");
+
+  return 0;
+}
+
+static int test_python_z()
+{
+  x2("a\\Z", "a", 0, 1);
+  n("a\\Z", "a\n");
+  e("\\z", "a", ONIGERR_UNDEFINED_OPERATOR);
+
+  return 0;
+}
+
+static int test_python_single_multi()
+{
+  n(".", "\n");
+  x2("(?s).", "\n", 0, 1);
+
+  n("^abc", "\nabc");
+  x2("(?m)^abc", "\nabc", 1, 4);
+  n("abc$", "abc\ndef");
+  x2("abc$", "abc\n", 0, 3);
+  x2("(?m)abc$", "abc\ndef", 0, 3);
+
+  return 0;
+}
+
 extern int main(int argc, char* argv[])
 {
   OnigEncoding use_encs[1];
@@ -222,7 +272,8 @@ extern int main(int argc, char* argv[])
 
   Syntax = ONIG_SYNTAX_PERL;
 
-  test_fixed_interval();
+  test_reluctant_interval();
+  test_possessive_interval();
   test_isolated_option();
   test_prec_read();
   test_look_behind();
@@ -235,13 +286,29 @@ extern int main(int argc, char* argv[])
 
   Syntax = ONIG_SYNTAX_JAVA;
 
-  test_fixed_interval();
+  test_reluctant_interval();
+  test_possessive_interval();
   test_isolated_option();
   test_prec_read();
   test_look_behind();
   x2("(?<=ab|(.))\\1", "abb", 2, 3);
   n("(?<!ab|b)c", "bbc");
   n("(?<!b|ab)c", "bbc");
+
+  Syntax = ONIG_SYNTAX_PYTHON;
+
+  test_reluctant_interval();
+  test_python_option_ascii();
+  test_python_z();
+  test_python_single_multi();
+  x2("(?P<name>abc)", "abc", 0, 3);
+  x2("(?P<name>abc)(?P=name)", "abcabc", 0, 6);
+  x2("(?P<name>abc){0}(?P>name)", "abc", 0, 3);
+  x2("(?P<expr>[^()]+|\\((?P>expr)\\)){0}(?P>expr)", "((((xyz))))", 0, 11);
+  x2("\\u0041", "A", 0, 1);
+  x2("\\U00000041", "A", 0, 1);
+  e("\\U0041", "A", ONIGERR_INVALID_CODE_POINT_VALUE);
+
 
   fprintf(stdout,
        "\nRESULT   SUCC: %4d,  FAIL: %d,  ERROR: %d      (by Oniguruma %s)\n",
