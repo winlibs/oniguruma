@@ -1,4 +1,4 @@
-鬼車 正規表現 Version 6.9.6    2020/07/31
+鬼車 正規表現 Version 6.9.8    2022/04/11
 
 使用文法: ONIG_SYNTAX_ONIGURUMA (既定値)
 
@@ -284,6 +284,14 @@
                       * これは次の')'またはパターンの終わりまでのグループを形成する
                         /ab(?i)c|def|gh/ == /ab(?i:c|def|gh)/
 
+  /(?CIL).../, /(?CIL:...)/   全体オプション
+
+                            このオプションは、正規表現全体に影響を及ぼす位置
+                            に置かれなければならない
+
+                            C: ONIG_OPTION_DONT_CAPTURE_GROUP
+                            I: ONIG_OPTION_IGNORECASE_IS_ASCII
+                            L: ONIG_OPTION_FIND_LONGEST
 
   (式)              捕獲式集合
   (?:式)            非捕獲式集合
@@ -536,7 +544,7 @@
    + 名前指定後方参照        \k<name>
    + 部分式呼出し            \g<name>, \g<group-num>
    + 不在式                 (?~|...|...)
-   + 不在停止               (?|...)
+   + 不在停止               (?~|...)
 
 
 補記 3. Perl 5.8.0と比較して存在しない機能

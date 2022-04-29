@@ -7,6 +7,9 @@
 Oniguruma
 =========
 
+## **For a long time, Oniguruma has been under attack on Google search in Japan.** [(Issue #234)](https://github.com/kkos/oniguruma/issues/234)
+
+
 https://github.com/kkos/oniguruma
 
 Oniguruma is a modern and flexible regular expressions library. It
@@ -32,6 +35,16 @@ Supported character encodings:
 Notice (from 6.9.6)
 -------------------
 When using configure script, if you have the POSIX API enabled in an earlier version (disabled by default in 6.9.5) and you need application binary compatibility with the POSIX API, specify "--enable-binary-compatible-posix-api=yes" instead of "--enable-posix-api=yes". Starting in 6.9.6, "--enable-posix-api=yes" only supports source-level compatibility for 6.9.5 and earlier about POSIX API. (Issue #210)
+
+
+Version 6.9.8 (== Master branch / unreleased)
+-------------
+* Update Unicode version 14.0.0
+* Whole options
+    * (?C) : ONIG_OPTION_DONT_CAPTURE_GROUP
+    * (?I) : ONIG_OPTION_IGNORECASE_IS_ASCII
+    * (?L) : ONIG_OPTION_FIND_LONGEST
+* Fixed some problems found by OSS-Fuzz
 
 
 Version 6.9.7
@@ -100,18 +113,6 @@ Version 6.9.2 (Reiwa)
 * NEW: Unicode Text Segment mode option (?y{g}) (?y{w})  (*original)
 
 
-Version 6.9.1
--------------
-
-* Speed improvement (* especially UTF-8)
-
-
-Version 6.9.0
--------------
-
-* Update Unicode version 11.0.0
-* NEW: add Emoji properties
-
 
 License
 -------
@@ -124,7 +125,7 @@ Install
 
 ### Case 1: Linux distribution packages
 
-   * Fedora:         `dnf install oniguruma`
+   * Fedora:         `dnf install oniguruma-devel`
    * RHEL/CentOS:    `yum install oniguruma`
    * Debian/Ubuntu:  `apt install libonig5`
    * Arch:           `pacman -S oniguruma`

@@ -1,6 +1,6 @@
 /*
  * test_utf8.c
- * Copyright (c) 2019-2021  K.Kosako
+ * Copyright (c) 2019-2022  K.Kosako
  */
 #ifdef ONIG_ESCAPE_UCHAR_COLLISION
 #undef ONIG_ESCAPE_UCHAR_COLLISION
@@ -699,6 +699,8 @@ extern int main(int argc, char* argv[])
   x2("(?:(?<x>)|(?<x>efg))\\k<x>", "", 0, 0);
   x2("(?:(?<x>abc)|(?<x>efg))\\k<x>", "abcefgefg", 3, 9);
   n("(?:(?<x>abc)|(?<x>efg))\\k<x>", "abcefg");
+  x2("(?<x>x)(?<x>xx)\\k<x>", "xxxx", 0, 4);
+  x2("(?<x>x)(?<x>xx)\\k<x>", "xxxxz", 0, 4);
   x2("(?:(?<n1>.)|(?<n1>..)|(?<n1>...)|(?<n1>....)|(?<n1>.....)|(?<n1>......)|(?<n1>.......)|(?<n1>........)|(?<n1>.........)|(?<n1>..........)|(?<n1>...........)|(?<n1>............)|(?<n1>.............)|(?<n1>..............))\\k<n1>$", "a-pyumpyum", 2, 10);
   x3("(?:(?<n1>.)|(?<n1>..)|(?<n1>...)|(?<n1>....)|(?<n1>.....)|(?<n1>......)|(?<n1>.......)|(?<n1>........)|(?<n1>.........)|(?<n1>..........)|(?<n1>...........)|(?<n1>............)|(?<n1>.............)|(?<n1>..............))\\k<n1>$", "xxxxabcdefghijklmnabcdefghijklmn", 4, 18, 14);
   x3("(?<name1>)(?<name2>)(?<name3>)(?<name4>)(?<name5>)(?<name6>)(?<name7>)(?<name8>)(?<name9>)(?<name10>)(?<name11>)(?<name12>)(?<name13>)(?<name14>)(?<name15>)(?<name16>aaa)(?<name17>)$", "aaa", 0, 3, 16);
@@ -1596,6 +1598,37 @@ extern int main(int argc, char* argv[])
   x2("[t\\x{0063 0071}]+", "tcqb", 0, 3);
   x2("[\\W\\x{0063 0071}]+", "*cqa", 0, 3);
   x2("(\\O|(?=z\\g<2>*))(\\g<0>){0}", "a", 0, 1);
+
+  /* whole options */
+  x2("(?Ii)abc", "abc", 0, 3);
+  x2("(?Ii)abc", "ABC", 0, 3);
+  x2("(?Ii:abc)", "abc", 0, 3);
+  x2("(?Ii)xyz|abc", "aBc", 0, 3);
+  x2("(?Ii:zz|abc|AZ)", "ABc", 0, 3);
+  e("(?Ii:abc)d", "abc", ONIGERR_INVALID_GROUP_OPTION);
+  e("(?-Ii:abc)", "abc", ONIGERR_INVALID_GROUP_OPTION);
+  x2("(?I-i:abc)", "abc", 0, 3);
+  e("(?i-I:abc)", "abc", ONIGERR_INVALID_GROUP_OPTION);
+  x2("(?i)\xe2\x84\xaa", "k", 0, 1);
+  n("(?Ii)\xe2\x84\xaa", "k");
+  e("((?Ii)abc)", "", ONIGERR_INVALID_GROUP_OPTION);
+  x2("(?:(?Ii)abc)", "ABC", 0, 3);
+  x2("(?:(?:(?Ii)abc))", "ABC", 0, 3);
+  e("x(?Ii)", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("()(?Ii)", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("(?:)(?Ii)", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("^(?Ii)", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("(?Ii)$", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("(?Ii)|", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("(?Ii)|(?Ii)", "", ONIGERR_INVALID_GROUP_OPTION);
+  x2("a*", "aabcaaa", 0, 2);
+  x2("(?L)a*", "aabcaaa", 4, 7);
+  e("x(?L)xxxxx", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("(?-L)x", "", ONIGERR_INVALID_GROUP_OPTION);
+  x3("(..)\\1", "abab", 0, 2, 1);
+  e("(?C)(..)\\1", "abab", ONIGERR_INVALID_BACKREF);
+  e("(?-C)", "", ONIGERR_INVALID_GROUP_OPTION);
+  e("(?C)(.)(.)(.)(?<name>.)\\1", "abcdd", ONIGERR_NUMBERED_BACKREF_OR_CALL_NOT_ALLOWED);
 
   n("a(b|)+d", "abbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcd"); /* https://www.haijin-boys.com/discussions/5079 */
   n("   \xfd", ""); /* https://bugs.php.net/bug.php?id=77370 */

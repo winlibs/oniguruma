@@ -2,7 +2,7 @@
   regcomp.c -  Oniguruma (regular expression library)
 **********************************************************************/
 /*-
- * Copyright (c) 2002-2021  K.Kosako
+ * Copyright (c) 2002-2022  K.Kosako
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,83 +48,6 @@ typedef struct {
 OnigCaseFoldType OnigDefaultCaseFoldFlag = ONIGENC_CASE_FOLD_MIN;
 
 static OnigLen node_min_byte_len(Node* node, ParseEnv* env);
-
-#if 0
-typedef struct {
-  int  n;
-  int  alloc;
-  int* v;
-} int_stack;
-
-static int
-make_int_stack(int_stack** rs, int init_size)
-{
-  int_stack* s;
-  int* v;
-
-  *rs = 0;
-
-  s = xmalloc(sizeof(*s));
-  if (IS_NULL(s)) return ONIGERR_MEMORY;
-
-  v = (int* )xmalloc(sizeof(int) * init_size);
-  if (IS_NULL(v)) {
-    xfree(s);
-    return ONIGERR_MEMORY;
-  }
-
-  s->n = 0;
-  s->alloc = init_size;
-  s->v = v;
-
-  *rs = s;
-  return ONIG_NORMAL;
-}
-
-static void
-free_int_stack(int_stack* s)
-{
-  if (IS_NOT_NULL(s)) {
-    if (IS_NOT_NULL(s->v))
-      xfree(s->v);
-    xfree(s);
-  }
-}
-
-static int
-int_stack_push(int_stack* s, int v)
-{
-  if (s->n >= s->alloc) {
-    int new_size = s->alloc * 2;
-    int* nv = (int* )xrealloc(s->v, sizeof(int) * new_size);
-    if (IS_NULL(nv)) return ONIGERR_MEMORY;
-
-    s->alloc = new_size;
-    s->v = nv;
-  }
-
-  s->v[s->n] = v;
-  s->n++;
-  return ONIG_NORMAL;
-}
-
-static int
-int_stack_pop(int_stack* s)
-{
-  int v;
-
-#ifdef ONIG_DEBUG
-  if (s->n <= 0) {
-    fprintf(DBGFP, "int_stack_pop: fail empty. %p\n", s);
-    return 0;
-  }
-#endif
-
-  v = s->v[s->n];
-  s->n--;
-  return v;
-}
-#endif
 
 static int
 ops_init(regex_t* reg, int init_alloc_size)
@@ -3340,27 +3263,34 @@ enum GetValue {
   GET_VALUE_FOUND  =  1
 };
 
+#define MAX_NEST_LEVEL_GET_TREE_TAIL_LITERAL  16
+
 static int
-get_tree_tail_literal(Node* node, Node** rnode, regex_t* reg)
+get_tree_tail_literal(Node* node, Node** rnode, regex_t* reg, int nest_level)
 {
   int r;
+
+  nest_level++;
+  if (nest_level >= MAX_NEST_LEVEL_GET_TREE_TAIL_LITERAL) {
+    return GET_VALUE_NONE;
+  }
 
   switch (NODE_TYPE(node)) {
   case NODE_LIST:
     if (IS_NULL(NODE_CDR(node))) {
-      r = get_tree_tail_literal(NODE_CAR(node), rnode, reg);
+      r = get_tree_tail_literal(NODE_CAR(node), rnode, reg, nest_level);
     }
     else {
-      r = get_tree_tail_literal(NODE_CDR(node), rnode, reg);
+      r = get_tree_tail_literal(NODE_CDR(node), rnode, reg, nest_level);
       if (r == GET_VALUE_IGNORE) {
-        r = get_tree_tail_literal(NODE_CAR(node), rnode, reg);
+        r = get_tree_tail_literal(NODE_CAR(node), rnode, reg, nest_level);
       }
     }
     break;
 
 #ifdef USE_CALL
   case NODE_CALL:
-    r = get_tree_tail_literal(NODE_BODY(node), rnode, reg);
+    r = get_tree_tail_literal(NODE_BODY(node), rnode, reg, nest_level);
     break;
 #endif
 
@@ -3398,7 +3328,7 @@ get_tree_tail_literal(Node* node, Node** rnode, regex_t* reg)
     {
       QuantNode* qn = QUANT_(node);
       if (qn->lower != 0) {
-        r = get_tree_tail_literal(NODE_BODY(node), rnode, reg);
+        r = get_tree_tail_literal(NODE_BODY(node), rnode, reg, nest_level);
       }
       else
         r = GET_VALUE_NONE;
@@ -3414,12 +3344,12 @@ get_tree_tail_literal(Node* node, Node** rnode, regex_t* reg)
           r = GET_VALUE_NONE;
         else {
           NODE_STATUS_ADD(node, MARK1);
-          r = get_tree_tail_literal(NODE_BODY(node), rnode, reg);
+          r = get_tree_tail_literal(NODE_BODY(node), rnode, reg, nest_level);
           NODE_STATUS_REMOVE(node, MARK1);
         }
       }
       else {
-        r = get_tree_tail_literal(NODE_BODY(node), rnode, reg);
+        r = get_tree_tail_literal(NODE_BODY(node), rnode, reg, nest_level);
       }
     }
     break;
@@ -3591,10 +3521,22 @@ check_node_in_look_behind(Node* node, int not, int* used)
   case NODE_GIMMICK:
     if (NODE_IS_ABSENT_WITH_SIDE_EFFECTS(node) != 0)
       return 1;
+
+    {
+      GimmickNode* g = GIMMICK_(node);
+      if (g->type == GIMMICK_SAVE && g->detail_type == SAVE_KEEP)
+        *used = TRUE;
+    }
     break;
 
   case NODE_CALL:
-    r = check_called_node_in_look_behind(NODE_BODY(node), not);
+    if (NODE_IS_RECURSION(node)) {
+      /* fix: Issue 38040 in oss-fuzz */
+      /* This node should be removed before recursive call check. */
+      *used = TRUE;
+    }
+    else
+      r = check_called_node_in_look_behind(NODE_BODY(node), not);
     break;
 
   default:
@@ -4676,7 +4618,7 @@ tune_look_behind(Node* node, regex_t* reg, int state, ParseEnv* env)
           if (IS_NULL(an->lead_node)) {
             an->char_min_len = ci.min;
             an->char_max_len = ci.max;
-            r = get_tree_tail_literal(body, &tail, reg);
+            r = get_tree_tail_literal(body, &tail, reg, 0);
             if (r == GET_VALUE_FOUND) {
               r = onig_node_copy(&(an->lead_node), tail);
               if (r != 0) return r;
@@ -5196,6 +5138,47 @@ check_call_reference(CallNode* cn, ParseEnv* env, int state)
 
   return 0;
 }
+
+#ifdef USE_WHOLE_OPTIONS
+static int
+check_whole_options_position(Node* node /* root */)
+{
+  int is_list;
+
+  is_list = FALSE;
+
+ start:
+  switch (NODE_TYPE(node)) {
+  case NODE_LIST:
+    if (IS_NOT_NULL(NODE_CDR(node)))
+      is_list = TRUE;
+
+    node = NODE_CAR(node);
+    goto start;
+    break;
+
+  case NODE_BAG:
+    {
+      BagNode* en = BAG_(node);
+
+      if (en->type == BAG_OPTION) {
+        if (NODE_IS_WHOLE_OPTIONS(node)) {
+          if (is_list == TRUE && IS_NOT_NULL(NODE_BODY(node)))
+            break;
+
+          return 0;
+        }
+      }
+    }
+    break;
+
+  default:
+    break;
+  }
+
+  return ONIGERR_INVALID_GROUP_OPTION;
+}
+#endif
 
 static void
 tune_call2_call(Node* node)
@@ -7215,7 +7198,7 @@ print_optimize_info(FILE* f, regex_t* reg)
               ONIGENC_IS_CODE_PRINT(reg->enc, (OnigCodePoint )i))
             fputc(i, f);
           else
-            fprintf(f, "%d", i);
+            fprintf(f, "0x%02x", i);
         }
       }
       fprintf(f, "]\n");
@@ -7340,6 +7323,13 @@ static int parse_and_tune(regex_t* reg, const UChar* pattern,
 
   r = onig_parse_tree(&root, pattern, pattern_end, reg, scan_env);
   if (r != 0) goto err;
+
+#ifdef USE_WHOLE_OPTIONS
+  if ((scan_env->flags & PE_FLAG_HAS_WHOLE_OPTIONS) != 0) {
+    r = check_whole_options_position(root);
+    if (r != 0) goto err;
+  }
+#endif
 
   r = reduce_string_list(root, reg->enc);
   if (r != 0) goto err;
@@ -7621,7 +7611,7 @@ onig_reg_init(regex_t* reg, OnigOptionType option, OnigCaseFoldType case_fold_fl
     return ONIGERR_INVALID_ARGUMENT;
 
   if (ONIGENC_IS_UNDEF(enc))
-    return ONIGERR_DEFAULT_ENCODING_IS_NOT_SETTED;
+    return ONIGERR_DEFAULT_ENCODING_IS_NOT_SET;
 
   if ((option & (ONIG_OPTION_DONT_CAPTURE_GROUP|ONIG_OPTION_CAPTURE_GROUP))
       == (ONIG_OPTION_DONT_CAPTURE_GROUP|ONIG_OPTION_CAPTURE_GROUP)) {
@@ -7962,6 +7952,7 @@ typedef struct {
   int backref;
   int backref_with_level;
   int call;
+  int is_keep;
   int anychar_reluctant_many;
   int empty_check_nest_level;
   int max_empty_check_nest_level;
@@ -8060,7 +8051,7 @@ detect_can_be_slow(Node* node, SlowElementCount* ct, int ncall, int calls[])
 #ifdef USE_BACKREF_WITH_LEVEL
   case NODE_BACKREF:
     if (NODE_IS_NEST_LEVEL(node))
-      ct->backref_with_level++;
+      ct->heavy_element++;
     else
       ct->backref++;
     break;
@@ -8101,6 +8092,13 @@ detect_can_be_slow(Node* node, SlowElementCount* ct, int ncall, int calls[])
     }
     break;
 #endif
+  case NODE_GIMMICK:
+    {
+      GimmickNode* g = GIMMICK_(node);
+      if (g->type == GIMMICK_SAVE && g->detail_type == SAVE_KEEP)
+        ct->is_keep = TRUE;
+    }
+    break;
 
   default:
     break;
@@ -8151,6 +8149,7 @@ onig_detect_can_be_slow_pattern(const UChar* pattern,
   count.backref            = 0;
   count.backref_with_level = 0;
   count.call               = 0;
+  count.is_keep            = FALSE;
   count.anychar_reluctant_many     = 0;
   count.empty_check_nest_level     = 0;
   count.max_empty_check_nest_level = 0;
@@ -8158,13 +8157,39 @@ onig_detect_can_be_slow_pattern(const UChar* pattern,
 
   r = detect_can_be_slow(root, &count, 0, calls);
   if (r == 0) {
-    int n = count.prec_read + count.look_behind
-          + count.backref + count.backref_with_level + count.call
-          + count.anychar_reluctant_many;
-    if (count.heavy_element != 0)
-      n += count.heavy_element * 10;
+    int n;
+
+    n = count.prec_read + count.look_behind
+      + count.backref + count.backref_with_level + count.call
+      + count.anychar_reluctant_many;
+
+    if (count.is_keep) count.max_empty_check_nest_level++;
+
+    if (count.max_empty_check_nest_level > 2)
+      n += count.max_empty_check_nest_level - 2;
+    if (count.heavy_element != 0) {
+      if (count.heavy_element < 0x10000)
+        n += count.heavy_element << 8;
+      else
+        n += count.heavy_element;
+    }
 
     r = n;
+
+#ifdef ONIG_DEBUG_PARSE
+    fprintf(DBGFP, "-- detect can be slow --\n");
+    fprintf(DBGFP, "  prec_read:          %d\n", count.prec_read);
+    fprintf(DBGFP, "  look_behind:        %d\n", count.look_behind);
+    fprintf(DBGFP, "  backref:            %d\n", count.backref);
+    fprintf(DBGFP, "  backref_with_level: %d\n", count.backref_with_level);
+    fprintf(DBGFP, "  call:               %d\n", count.call);
+    fprintf(DBGFP, "  is_keep:            %d\n", count.is_keep);
+    fprintf(DBGFP, "  any_reluctant_many: %d\n", count.anychar_reluctant_many);
+    fprintf(DBGFP, "  max_empty_check_nest_level: %d\n", count.max_empty_check_nest_level);
+    fprintf(DBGFP, "  heavy_element:      %d\n", count.heavy_element);
+    fprintf(DBGFP, "  r:                  %d\n", r);
+    fprintf(DBGFP, "\n");
+#endif
   }
 
   if (IS_NOT_NULL(scan_env.mem_env_dynamic))
