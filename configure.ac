@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(onig, 6.9.8)
+AC_INIT(onig, 6.9.9)
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -7,13 +7,10 @@ AM_INIT_AUTOMAKE([-Wno-portability])
 AC_CONFIG_HEADERS([src/config.h])
 
 
-dnl default value for STATISTICS
-STATISTICS=""
 AC_ARG_WITH([statistics],
   [AS_HELP_STRING([--with-statistics],
     [take matching time statistical data])],
-  [STATISTICS=-DONIG_DEBUG_STATISTICS])
-AC_SUBST(STATISTICS)
+  AS_VAR_APPEND([CFLAGS], [" -DONIG_DEBUG_STATISTICS"]))
 
 
 dnl check for POSIX API
@@ -57,7 +54,7 @@ fi
 dnl Checks for programs.
 AC_PROG_CC
 LT_INIT
-LTVERSION="8:0:3"
+LTVERSION="9:0:4"
 AC_SUBST(LTVERSION)
 
 AC_PROG_INSTALL

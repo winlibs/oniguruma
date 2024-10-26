@@ -1,4 +1,4 @@
-Unicode Properties (Unicode Version: 14.0.0,  Emoji: 14.0)
+Unicode Properties (Unicode Version: 15.1.0,  Emoji: 15.1)
 
 ASCII_Hex_Digit
 Adlam
@@ -90,10 +90,14 @@ Hiragana
 Hyphen
 IDS_Binary_Operator
 IDS_Trinary_Operator
+IDS_Unary_Operator
+ID_Compat_Math_Continue
+ID_Compat_Math_Start
 ID_Continue
 ID_Start
 Ideographic
 Imperial_Aramaic
+InCB
 Inherited
 Inscriptional_Pahlavi
 Inscriptional_Parthian
@@ -102,6 +106,7 @@ Join_Control
 Kaithi
 Kannada
 Katakana
+Kawi
 Kayah_Li
 Kharoshthi
 Khitan_Small_Script
@@ -151,6 +156,7 @@ Multani
 Myanmar
 N
 Nabataean
+Nag_Mundari
 Nandinagari
 Nd
 New_Tai_Lue
@@ -352,6 +358,7 @@ Ideo
 IDS
 IDSB
 IDST
+IDSU
 Initial_Punctuation
 Ital
 Java
@@ -397,6 +404,7 @@ Mroo
 Mtei
 Mult
 Mymr
+Nagm
 Nand
 Narb
 Nbat
@@ -440,6 +448,7 @@ Phnx
 Plrd
 Private_Use
 Prti
+punct
 Punctuation
 Qaac
 Qaai
@@ -716,6 +725,7 @@ In_Old_Hungarian
 In_Hanifi_Rohingya
 In_Rumi_Numeral_Symbols
 In_Yezidi
+In_Arabic_Extended_C
 In_Old_Sogdian
 In_Sogdian
 In_Old_Uyghur
@@ -747,11 +757,13 @@ In_Zanabazar_Square
 In_Soyombo
 In_Unified_Canadian_Aboriginal_Syllabics_Extended_A
 In_Pau_Cin_Hau
+In_Devanagari_Extended_A
 In_Bhaiksuki
 In_Marchen
 In_Masaram_Gondi
 In_Gunjala_Gondi
 In_Makasar
+In_Kawi
 In_Lisu_Supplement
 In_Tamil_Supplement
 In_Cuneiform
@@ -784,6 +796,7 @@ In_Znamenny_Musical_Notation
 In_Byzantine_Musical_Symbols
 In_Musical_Symbols
 In_Ancient_Greek_Musical_Notation
+In_Kaktovik_Numerals
 In_Mayan_Numerals
 In_Tai_Xuan_Jing_Symbols
 In_Counting_Rod_Numerals
@@ -791,9 +804,11 @@ In_Mathematical_Alphanumeric_Symbols
 In_Sutton_SignWriting
 In_Latin_Extended_G
 In_Glagolitic_Supplement
+In_Cyrillic_Extended_D
 In_Nyiakeng_Puachue_Hmong
 In_Toto
 In_Wancho
+In_Nag_Mundari
 In_Ethiopic_Extended_B
 In_Mende_Kikakui
 In_Adlam
@@ -821,8 +836,10 @@ In_CJK_Unified_Ideographs_Extension_C
 In_CJK_Unified_Ideographs_Extension_D
 In_CJK_Unified_Ideographs_Extension_E
 In_CJK_Unified_Ideographs_Extension_F
+In_CJK_Unified_Ideographs_Extension_I
 In_CJK_Compatibility_Ideographs_Supplement
 In_CJK_Unified_Ideographs_Extension_G
+In_CJK_Unified_Ideographs_Extension_H
 In_Tags
 In_Variation_Selectors_Supplement
 In_Supplementary_Private_Use_Area_A

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(oniguruma
-  VERSION 6.9.8
+  VERSION 6.9.9
   LANGUAGES C)
 
 set(PACKAGE onig)
@@ -9,8 +9,10 @@ set(PACKAGE_VERSION ${PROJECT_VERSION})
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(ENABLE_POSIX_API  "Include POSIX API" OFF)
 option(ENABLE_BINARY_COMPATIBLE_POSIX_API  "Include Binary compatible POSIX API" OFF)
+option(ENABLE_STATISTICS  "Include statistics API" OFF)
 option(INSTALL_DOCUMENTATION "Install documentation" ON)
 option(INSTALL_EXAMPLES "Install examples" OFF)
+option(BUILD_TEST "Build tests" ON)
 if(MSVC)
   option(MSVC_STATIC_RUNTIME "Build with static runtime" OFF)
 endif()
@@ -70,6 +72,10 @@ endif()
 
 if(ENABLE_BINARY_COMPATIBLE_POSIX_API)
   add_definitions("-DUSE_BINARY_COMPATIBLE_POSIX_API")
+endif()
+
+if(ENABLE_STATISTICS)
+  add_definitions("-DONIG_DEBUG_STATISTICS")
 endif()
 
 add_library(onig ${_SRCS})
@@ -160,6 +166,12 @@ configure_package_config_file(
     INSTALL_DESTINATION "${config_install_dir}"
 )
 
+if(CMAKE_INSTALL_LIBDIR MATCHES "^/")
+    set(onig_pkgconfig_libdir "${CMAKE_INSTALL_LIBDIR}")
+else()
+    set(onig_pkgconfig_libdir "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
+endif()
+
 # Targets:
 #   * <prefix>/lib*/libonig.a
 #   * header location after install: <prefix>/include/
@@ -212,8 +224,8 @@ endif()
 # Examples
 if(INSTALL_EXAMPLES)
 install(FILES sample/bug_fix.c sample/callback_each_match.c
-              sample/callout.c sample/count.c sample/crnl.c
-              sample/echo.c sample/encode.c sample/listcap.c
+              sample/callout.c sample/count.c sample/echo.c
+              sample/encode.c sample/listcap.c
               sample/names.c sample/posix.c sample/regset.c
               sample/scan.c sample/simple.c sample/sql.c
               sample/syntax.c sample/user_property.c
@@ -231,3 +243,11 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/oniguruma.pc
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/onig-config
         DESTINATION "${CMAKE_INSTALL_BINDIR}")
+
+# Test
+if(BUILD_TEST)
+  add_subdirectory(test)
+  if(CMAKE_COMPILER_IS_GNUCC)
+    add_subdirectory(windows)
+  endif()
+endif(BUILD_TEST)
